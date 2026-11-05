@@ -1,13 +1,13 @@
 //! QnEform language implementation.
 //!
-//! The current frontend supports a deliberately small source subset:
-//! qubit declarations, measurement, literal/name bindings, and explicit
-//! quantum/classical blocks. Quantum semantics and execution are not yet
-//! implemented.
+//! The current frontend includes a source lexer, parser, syntax AST, and
+//! semantic validation for a deliberately small language subset. It does not
+//! yet execute or simulate quantum programs.
 
 pub mod ast;
 pub mod lexer;
 pub mod parser;
+pub mod semantic;
 
 /// Current crate version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -26,6 +26,20 @@ pub fn parse_source(source: &str) -> Result<ast::Program, String> {
         .map_err(|error| error.to_string())
 }
 
+/// Parse and semantically validate source text.
+///
+/// The returned module is the initial typed semantic representation. It is
+/// not executable bytecode or a quantum circuit.
+pub fn validate_source(source: &str) -> Result<semantic::SemanticModule, String> {
+    let program = parse_source(source)?;
+    semantic::analyze(&program).map_err(|errors| {
+        errors.into_iter()
+            .map(|error| error.to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+    })
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -42,5 +56,11 @@ mod tests {
     #[test]
     fn rejects_unknown_syntax() {
         assert!(super::parse_source("quantum { H q0; }").is_err());
+    }
+
+    #[test]
+    fn validates_semantics_after_parsing() {
+        assert!(super::validate_source("qbit q0; measure q0;").is_ok());
+        assert!(super::validate_source("measure missing;").is_err());
     }
 }

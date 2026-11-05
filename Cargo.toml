@@ -1,0 +1,15 @@
+[package]
+name = "qneform"
+version = "0.1.0"
+edition = "2021"
+description = "QnEform language implementation — initial buildable baseline"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "qneform"
+path = "src/main.rs"
+
+[dependencies]

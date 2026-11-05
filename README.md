@@ -9,10 +9,10 @@ This branch contains an initial Rust package, a frontend syntax subset, Semantic
 Implemented:
 - Rust library and command-line executable
 - Source-positioned lexer with line/block comments and escaped strings
-- AST for qubit declarations, measurement, literal/name bindings, and quantum/classical blocks
+- AST for qubit declarations, allocation, borrowing/return, release, measurement, literal/name bindings, and quantum/classical blocks
 - Recursive-descent parser with structured syntax errors
 - `qneform check <file>` syntax-check command
-- Semantic validation for duplicate declarations, unresolved identifiers, domain restrictions, and quantum/classical type boundaries
+- Semantic validation for duplicate declarations, unresolved identifiers, domain restrictions, quantum/classical type boundaries, allocation order, borrow balance, and release safety
 - Initial typed semantic module (`qneform-semantic-0.1`)
 - Versioned Semantic IR schema (`qneform-ir-0.2`) with module-local IDs, resource records, effects, proof obligations, and source provenance
 - Public `compile_to_ir` pipeline
@@ -20,10 +20,10 @@ Implemented:
 - GitHub Actions build/test and formatting workflow
 
 Not implemented:
-- Source-language integration of allocation/borrow/release syntax and complete static ownership checking
+- Complete entanglement-aware static ownership proofs and typed, provenance-bound proof attestations
 - Typed, provenance-bound proof objects for cleanliness and dirty-ancilla restoration
 - Canonical Semantic IR serialization and cryptographic source/IR binding
-- Full compiler integration of resource allocation, borrowing, release, and lifecycle enforcement
+- Physical allocation, quantum execution, and backend enforcement of resource lifecycle contracts
 - Measurement-result semantics, gate semantics, simulator, and hardware backends
 - Quantum gate syntax or gate semantics
 - Quantum state simulation or physical hardware execution
@@ -47,10 +47,13 @@ cargo run -- check examples/minimal.qn
 
 ```text
 qbit q0;
+allocate q0;
 
 quantum {
     qbit q1;
+    allocate q1;
     measure q1;
+    release q1;
 }
 
 classical {
@@ -60,7 +63,7 @@ classical {
 }
 ```
 
-The parser currently accepts these declarations and blocks only. Gate statements such as `H q0;` are intentionally rejected until gate grammar and semantics are specified. `qneform check` performs parsing and v0.1 semantic validation; it does not execute or simulate a quantum program.
+The parser accepts the resource lifecycle statements shown above. Gate statements such as `H q0;` are intentionally rejected until gate grammar and semantics are specified. `qneform check` performs parsing and v0.1 semantic validation; it does not execute or simulate a quantum program.
 
 ## Architecture direction
 
@@ -68,7 +71,7 @@ The planned pipeline is:
 
 `Source → Lexer → Parser/AST → Semantic Kernel → Semantic IR v0.2 → future reference simulator and/or backend`
 
-The semantic model must distinguish classical, quantum, hybrid, boundary, and abstract lifecycle domains. Quantum resources require explicit ownership and lifecycle rules. The initial QCM-03 resource ledger is implemented as a separate bookkeeping API; it is not yet wired into source syntax or backend execution. Measurement is explicit and state-altering. Simulator behavior must not be presented as physical hardware behavior.
+The semantic model must distinguish classical, quantum, hybrid, boundary, and abstract lifecycle domains. Quantum resources require explicit ownership and lifecycle rules. QCM-03 resource lifecycle statements are now parsed, semantically checked, and lowered to typed IR operations. The separate ledger remains a bookkeeping API; no physical allocation or backend execution is implied. Measurement is explicit and state-altering. Simulator behavior must not be presented as physical hardware behavior.
 
 See [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline, [frontend syntax specification](docs/language/frontend-syntax-v0.1.md), [Semantic Kernel v0.1](docs/architecture/semantic-kernel-v0.1.md), and [Semantic IR v0.2](docs/architecture/semantic-ir-v0.2.md).
 

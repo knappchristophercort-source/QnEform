@@ -110,6 +110,32 @@ impl Parser {
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
                 Ok(Statement { kind: StatementKind::QubitDeclaration { name }, span: start })
             }
+            TokenKind::Keyword(Keyword::Allocate) => {
+                let start = self.advance().span;
+                let (target, _) = self.expect_identifier()?;
+                self.expect_kind(TokenKind::Semicolon, "';'")?;
+                Ok(Statement { kind: StatementKind::Allocate { target }, span: start })
+            }
+            TokenKind::Keyword(Keyword::Release) => {
+                let start = self.advance().span;
+                let (target, _) = self.expect_identifier()?;
+                self.expect_kind(TokenKind::Semicolon, "';'")?;
+                Ok(Statement { kind: StatementKind::Release { target }, span: start })
+            }
+            TokenKind::Keyword(Keyword::Borrow) => {
+                let start = self.advance().span;
+                let (target, _) = self.expect_identifier()?;
+                self.expect_keyword(Keyword::As, "'as'")?;
+                let (alias, _) = self.expect_identifier()?;
+                self.expect_kind(TokenKind::Semicolon, "';'")?;
+                Ok(Statement { kind: StatementKind::Borrow { target, alias }, span: start })
+            }
+            TokenKind::Keyword(Keyword::Return) => {
+                let start = self.advance().span;
+                let (alias, _) = self.expect_identifier()?;
+                self.expect_kind(TokenKind::Semicolon, "';'")?;
+                Ok(Statement { kind: StatementKind::ReturnBorrow { alias }, span: start })
+            }
             TokenKind::Keyword(Keyword::Measure) => {
                 let start = self.advance().span;
                 let (target, _) = self.expect_identifier()?;

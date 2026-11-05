@@ -497,8 +497,8 @@ mod tests {
         let ir = lower_source("qbit q0; allocate q0; quantum { measure q0; } classical { let shots := 10; }");
         assert_eq!(ir.schema_version, "qneform-ir-0.2");
         assert_eq!(ir.resources.len(), 1);
-        assert_eq!(ir.resources[0].lifecycle, ResourceLifecycle::Declared);
-        assert_eq!(ir.resources[0].ownership, Ownership::Unassigned);
+        assert_eq!(ir.resources[0].lifecycle, ResourceLifecycle::Allocated);
+        assert_eq!(ir.resources[0].ownership, Ownership::Owned);
         assert!(ir.effects.contains(&Effect::Measurement));
         assert!(ir.symbols.iter().all(|symbol| symbol.origin.source_name.as_deref() == Some("test.qn")));
     }
@@ -527,7 +527,7 @@ mod tests {
         let a = Lexer::new("qbit q0;").tokenize().unwrap();
         let program_a = Parser::new(a).parse().unwrap();
         let validated_a = semantic::analyze(&program_a).unwrap();
-        let b = Lexer::new("let x := 1;").tokenize().unwrap();
+        let b = Lexer::new("let x := 1; let y := 2;").tokenize().unwrap();
         let program_b = Parser::new(b).parse().unwrap();
         assert!(lower(&program_b, &validated_a, None).is_err());
     }

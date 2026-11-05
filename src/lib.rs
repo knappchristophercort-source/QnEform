@@ -52,7 +52,7 @@ mod tests {
     #[test]
     fn parses_minimal_qubit_program() {
         let program = super::parse_source("qbit q0; allocate q0; measure q0;").unwrap();
-        assert_eq!(program.statements.len(), 2);
+        assert_eq!(program.statements.len(), 3);
     }
 
     #[test]
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn validates_semantics_after_parsing() {
-        assert!(super::validate_source("qbit q0; measure q0;").is_ok());
+        assert!(super::validate_source("qbit q0; allocate q0; measure q0;").is_ok());
         assert!(super::validate_source("measure missing;").is_err());
     }
 }

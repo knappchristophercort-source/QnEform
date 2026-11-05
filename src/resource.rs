@@ -244,9 +244,12 @@ impl ResourceLedger {
                 return Err(ResourceError::DirtyAncillaRestorationProofRequired(state.name)),
             _ => {}
         }
-        let state = self.state_mut(handle)?;
-        state.lifecycle = Lifecycle::Released;
-        self.by_name.remove(&state.name);
+        let released_name = {
+            let state = self.state_mut(handle)?;
+            state.lifecycle = Lifecycle::Released;
+            state.name.clone()
+        };
+        self.by_name.remove(&released_name);
         Ok(())
     }
 }

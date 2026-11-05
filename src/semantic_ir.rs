@@ -487,7 +487,7 @@ mod tests {
 
     #[test]
     fn lowers_symbols_resources_effects_and_provenance() {
-        let ir = lower_source("qbit q0; quantum { measure q0; } classical { let shots := 10; }");
+        let ir = lower_source("qbit q0; allocate q0; quantum { measure q0; } classical { let shots := 10; }");
         assert_eq!(ir.schema_version, "qneform-ir-0.2");
         assert_eq!(ir.resources.len(), 1);
         assert_eq!(ir.resources[0].lifecycle, ResourceLifecycle::Declared);
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn module_local_ids_are_deterministic_for_same_input() {
-        let source = "qbit q0; measure q0;";
+        let source = "qbit q0; allocate q0; measure q0;";
         assert_eq!(lower_source(source), lower_source(source));
     }
 

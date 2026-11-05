@@ -133,6 +133,10 @@ pub enum OperationKind {
     EnterDomain(Domain),
     ExitDomain(Domain),
     DeclareResource(ResourceId),
+    AllocateResource(ResourceId),
+    ReleaseResource(ResourceId),
+    BorrowResource { target: ResourceId, alias: String },
+    ReturnBorrow { alias: String },
     Measure { target: ResourceId },
     Bind { target: SymbolId, value: Operand },
 }
@@ -259,6 +263,38 @@ pub fn lower(
                     });
                     *next_operation += 1;
                 }
+                StatementKind::Allocate { target } => {
+                    let resource = *resource_ids.get(target).ok_or_else(|| LoweringError {
+                        message: format!("validated allocation target '{target}' is missing from lowering symbol map"),
+                        span: Some(statement.span),
+                    })?;
+                    operations.push(Operation { id: *next_operation, kind: OperationKind::AllocateResource(resource),
+                        domain, effects: vec![Effect::ResourceAllocation], origin: source_origin(statement.span, source_name) });
+                    *next_operation += 1;
+                }
+                StatementKind::Release { target } => {
+                    let resource = *resource_ids.get(target).ok_or_else(|| LoweringError {
+                        message: format!("validated release target '{target}' is missing from lowering symbol map"),
+                        span: Some(statement.span),
+                    })?;
+                    operations.push(Operation { id: *next_operation, kind: OperationKind::ReleaseResource(resource),
+                        domain, effects: vec![Effect::ResourceRelease], origin: source_origin(statement.span, source_name) });
+                    *next_operation += 1;
+                }
+                StatementKind::Borrow { target, alias } => {
+                    let resource = *resource_ids.get(target).ok_or_else(|| LoweringError {
+                        message: format!("validated borrow target '{target}' is missing from lowering symbol map"),
+                        span: Some(statement.span),
+                    })?;
+                    operations.push(Operation { id: *next_operation, kind: OperationKind::BorrowResource { target: resource, alias: alias.clone() },
+                        domain, effects: vec![], origin: source_origin(statement.span, source_name) });
+                    *next_operation += 1;
+                }
+                StatementKind::ReturnBorrow { alias } => {
+                    operations.push(Operation { id: *next_operation, kind: OperationKind::ReturnBorrow { alias: alias.clone() },
+                        domain, effects: vec![], origin: source_origin(statement.span, source_name) });
+                    *next_operation += 1;
+                }
                 StatementKind::Measurement { target } => {
                     let resource = *resource_ids.get(target).ok_or_else(|| LoweringError {
                         message: format!("validated measurement target '{target}' is missing from lowering symbol map"),
@@ -376,6 +412,10 @@ pub fn lower(
     let expected_non_block = validated.instructions.iter().filter(|instruction| matches!(
         instruction,
         SemanticInstruction::DeclareQubit { .. } |
+        SemanticInstruction::Allocate { .. } |
+        SemanticInstruction::Release { .. } |
+        SemanticInstruction::Borrow { .. } |
+        SemanticInstruction::ReturnBorrow { .. } |
         SemanticInstruction::Measure { .. } |
         SemanticInstruction::Bind { .. }
     )).count();

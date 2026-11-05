@@ -71,11 +71,11 @@ Unsupported syntax must return a non-zero exit status with a diagnostic. For exa
 
 ## 5. Required next-stage work
 
-1. Add semantic validation for duplicate declarations, unresolved identifiers, and invalid statement placement.
-2. Define explicit type and resource rules before adding gate syntax.
-3. Lower the AST into a versioned, backend-independent Semantic IR.
-4. Preserve source spans and source-to-IR provenance.
-5. Add conformance tests that distinguish syntax acceptance from semantic validity.
+1. **Implemented in Semantic Kernel v0.1:** duplicate declaration checks, unresolved identifier checks, domain restrictions, and quantum/classical value separation.
+2. Extend the initial typed semantic module into the complete versioned Semantic IR defined by QCM-02.
+3. Add richer types, explicit resource ownership states, and lifecycle/proof obligations.
+4. Preserve source spans and source-to-IR provenance through every lowering stage.
+5. Expand conformance tests for semantic validity and adversarial scope/resource cases.
 6. Only then add a minimal supported gate vocabulary and reference simulator.
 
 ## 6. Non-goals for this version

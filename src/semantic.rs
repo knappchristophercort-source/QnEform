@@ -239,6 +239,10 @@ impl Analyzer {
                     );
                     return;
                 }
+                if self.lookup(target).map(|symbol| symbol.info.value_type) != Some(ValueType::Qubit) {
+                    self.error("SEM_UNRESOLVED_QUANTUM_RESOURCE", format!("measurement target '{target}' is not a declared qubit"), statement.span);
+                    return;
+                }
                 if !self.allocated.get(target).copied().unwrap_or(false) || self.released.get(target).copied().unwrap_or(false) {
                     self.error("SEM_RESOURCE_NOT_ACTIVE", format!("measurement target '{target}' must be allocated and live"), statement.span);
                     return;

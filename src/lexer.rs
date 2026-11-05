@@ -167,6 +167,11 @@ impl<'a> Lexer<'a> {
                 }
                 match word.as_str() {
                     "qbit" => TokenKind::Keyword(Keyword::Qbit),
+                    "allocate" => TokenKind::Keyword(Keyword::Allocate),
+                    "release" => TokenKind::Keyword(Keyword::Release),
+                    "borrow" => TokenKind::Keyword(Keyword::Borrow),
+                    "as" => TokenKind::Keyword(Keyword::As),
+                    "return" => TokenKind::Keyword(Keyword::Return),
                     "measure" => TokenKind::Keyword(Keyword::Measure),
                     "let" => TokenKind::Keyword(Keyword::Let),
                     "quantum" => TokenKind::Keyword(Keyword::Quantum),

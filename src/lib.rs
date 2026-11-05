@@ -7,6 +7,7 @@
 pub mod ast;
 pub mod lexer;
 pub mod parser;
+pub mod resource;
 pub mod semantic;
 pub mod semantic_ir;
 

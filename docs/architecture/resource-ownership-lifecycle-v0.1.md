@@ -1,6 +1,6 @@
 # QCM-03 Resource Ownership and Lifecycle v0.1
 
-**Status:** Initial resource lifecycle ledger implemented; source-language integration is pending  
+**Status:** Initial resource ledger and source-language lifecycle validation/lowering implemented; typed proof attestations and backend integration remain pending  
 **Scope:** Compiler/runtime bookkeeping API and fail-closed transition rules  
 **Not claimed:** Physical qubit allocation, quantum-state inspection, or complete static ownership proof
 
@@ -34,7 +34,7 @@ This requires both the zero state and separability from the remainder. A zero me
 - Borrowing does not transfer ownership.
 - Unknown or stale handles fail closed.
 
-The initial API uses explicit borrow handles rather than aliasing mutable references to represent borrow lifetime. Source syntax and lexical borrow scopes are a later integration step.
+The API uses explicit borrow handles. The source subset also supports `borrow q0 as view;` and `return view;`. Borrow aliases are linear and must be returned before release or end of module. Nested lexical borrow blocks and alias use as a gate operand remain future work.
 
 ## 4. Lifecycle
 
@@ -44,7 +44,7 @@ The ledger supports these lifecycle labels:
 
 Not every resource follows every state. A normal qubit may be released only when ownership is retained, all borrows are returned, and entanglement is known separable. Clean ancilla additionally requires a cleanliness attestation. Dirty ancilla requires a restoration attestation.
 
-The current API intentionally does not infer that a resource is separable. The caller must supply a conservative entanglement status. \`Unknown\`, \`PossiblyEntangled\`, and \`KnownEntangled\` all block release.
+The current source analyzer intentionally does not infer that a resource is separable. A release statement is a semantic lifecycle transition, not proof that physical deallocation is safe; the IR retains an unsatisfied ownership proof obligation until stronger evidence is integrated. The current source analyzer does not yet enforce entanglement-aware release. The caller must supply a conservative entanglement status. \`Unknown\`, \`PossiblyEntangled\`, and \`KnownEntangled\` all block release.
 
 ## 5. Clean and dirty ancilla proof contracts
 
@@ -84,7 +84,19 @@ The following are separate claims and must not be conflated:
 
 The ledger's \`attest_cleanliness\` and \`attest_dirty_restored\` methods accept proof results. They do not generate those proofs. Production integration must replace unconstrained booleans with typed, provenance-bearing proof objects before hardware use.
 
-## 8. Implemented tests
+## 8. Source syntax and IR integration
+
+The current frontend recognizes:
+
+- `qbit q0;` — declare a logical resource
+- `allocate q0;` — mark the resource allocated
+- `borrow q0 as view;` — create a linear borrow alias
+- `return view;` — close that borrow
+- `release q0;` — mark the resource released
+
+The semantic kernel rejects measurement before allocation, duplicate allocation, use after release, release with outstanding borrows, unknown borrow returns, and unreturned borrows. These are compiler bookkeeping checks, not a physical resource proof. IR lowering emits typed allocation/borrow/return/release operations and reflects allocated/released lifecycle states.
+
+## 9. Implemented tests
 
 The current module tests:
 - Owned allocation and conservative initial state
@@ -97,7 +109,7 @@ The current module tests:
 - Entangled clean ancilla cannot be released
 - Use-after-release and double release rejection
 
-## 9. Next implementation gates
+## 10. Next implementation gates
 
 1. Replace boolean attestations with typed proof records bound to resource identity and program/IR version.
 2. Integrate resource declarations and transitions into Semantic IR operations.

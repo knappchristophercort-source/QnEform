@@ -4,7 +4,7 @@ QnEform is a project to develop a native language for classical, quantum, and hy
 
 ## Current implementation status
 
-This branch contains an initial Rust package and a small, tested frontend syntax subset. It is **not yet a quantum compiler or simulator**.
+This branch contains an initial Rust package, a frontend syntax subset, and Semantic Kernel v0.1. It is **not yet a quantum compiler or simulator**.
 
 Implemented:
 - Rust library and command-line executable
@@ -12,11 +12,13 @@ Implemented:
 - AST for qubit declarations, measurement, literal/name bindings, and quantum/classical blocks
 - Recursive-descent parser with structured syntax errors
 - `qneform check <file>` syntax-check command
-- Unit tests for supported syntax and rejection of unsupported syntax
+- Semantic validation for duplicate declarations, unresolved identifiers, domain restrictions, and quantum/classical type boundaries
+- Initial typed semantic module (`qneform-semantic-0.1`)
+- Unit tests for syntax and semantic acceptance/rejection
 - GitHub Actions build/test and formatting workflow
 
 Not implemented:
-- Semantic analysis, type checking, or QnEform Semantic IR
+- Full QCM-02 Semantic IR, advanced type system, and complete resource ownership/lifecycle enforcement
 - Quantum gate syntax or gate semantics
 - Quantum state simulation or physical hardware execution
 - Quantum resource ownership and ancilla lifecycle enforcement
@@ -52,17 +54,17 @@ classical {
 }
 ```
 
-The parser currently accepts these declarations and blocks only. Gate statements such as `H q0;` are intentionally rejected until gate grammar and semantics are specified. A successful syntax check means only that the source matches the supported grammar; it does not mean that a quantum program has been type-checked or executed.
+The parser currently accepts these declarations and blocks only. Gate statements such as `H q0;` are intentionally rejected until gate grammar and semantics are specified. `qneform check` performs parsing and v0.1 semantic validation; it does not execute or simulate a quantum program.
 
 ## Architecture direction
 
 The planned pipeline is:
 
-`Source → Lexer → Parser/AST → Semantic IR → validation → reference simulator and/or backend`
+`Source → Lexer → Parser/AST → Semantic Kernel v0.1 → typed semantic module → future reference simulator and/or backend`
 
 The semantic model must distinguish classical, quantum, hybrid, boundary, and abstract lifecycle domains. Quantum resources require explicit ownership and lifecycle rules. Measurement is explicit and state-altering. Simulator behavior must not be presented as physical hardware behavior.
 
-See [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline and implementation sequence.
+See [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline, [frontend syntax specification](docs/language/frontend-syntax-v0.1.md), and [Semantic Kernel v0.1](docs/architecture/semantic-kernel-v0.1.md).
 
 ## Project boundaries
 

@@ -469,6 +469,31 @@ mod tests {
     }
 
     #[test]
+    fn requires_allocation_before_measurement() {
+        assert!(error_codes("qbit q0; measure q0;").contains(&"SEM_RESOURCE_NOT_ACTIVE"));
+    }
+
+    #[test]
+    fn rejects_duplicate_allocation_and_use_after_release() {
+        assert!(error_codes("qbit q0; allocate q0; allocate q0;").contains(&"SEM_INVALID_RESOURCE_ALLOCATION"));
+        assert!(error_codes("qbit q0; allocate q0; release q0; measure q0;").contains(&"SEM_RESOURCE_NOT_ACTIVE"));
+    }
+
+    #[test]
+    fn borrow_must_be_returned_before_release() {
+        assert!(error_codes("qbit q0; allocate q0; borrow q0 as view; release q0; return view;")
+            .contains(&"SEM_RESOURCE_HAS_OUTSTANDING_BORROWS"));
+        assert!(analyze_source("qbit q0; allocate q0; borrow q0 as view; return view; release q0;").is_ok());
+    }
+
+    #[test]
+    fn rejects_unreturned_borrow_and_unknown_return() {
+        assert!(error_codes("qbit q0; allocate q0; borrow q0 as view;")
+            .contains(&"SEM_BORROW_NOT_RETURNED"));
+        assert!(error_codes("return missing;").contains(&"SEM_UNKNOWN_BORROW"));
+    }
+
+    #[test]
     fn classical_references_are_allowed_but_qubit_references_are_not() {
         assert!(analyze_source("let first := 4; let second := first;").is_ok());
         assert!(analyze_source("qbit q0; let second := q0;").is_err());

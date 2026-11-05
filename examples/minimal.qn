@@ -2,10 +2,13 @@
 // This file demonstrates syntax only; it is not executed as a quantum circuit.
 
 qbit q0;
+allocate q0;
 
 quantum {
     qbit q1;
+    allocate q1;
     measure q1;
+    release q1;
 }
 
 classical {

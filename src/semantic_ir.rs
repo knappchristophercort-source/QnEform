@@ -8,7 +8,7 @@
 use crate::{
     ast::Program,
     lexer::Span,
-    semantic::{self, BoundValue, Domain, SemanticInstruction, ValueType},
+    semantic::{self, Domain, SemanticInstruction, ValueType},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

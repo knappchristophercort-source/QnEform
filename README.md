@@ -4,7 +4,7 @@ QnEform is a project to develop a native language for classical, quantum, and hy
 
 ## Current implementation status
 
-This branch contains an initial Rust package, a frontend syntax subset, and Semantic Kernel v0.1. It is **not yet a quantum compiler or simulator**.
+This branch contains an initial Rust package, a frontend syntax subset, Semantic Kernel v0.1, and initial Semantic IR v0.2 lowering. It is **not yet a quantum compiler or simulator**.
 
 Implemented:
 - Rust library and command-line executable
@@ -14,11 +14,15 @@ Implemented:
 - `qneform check <file>` syntax-check command
 - Semantic validation for duplicate declarations, unresolved identifiers, domain restrictions, and quantum/classical type boundaries
 - Initial typed semantic module (`qneform-semantic-0.1`)
+- Versioned Semantic IR schema (`qneform-ir-0.2`) with module-local IDs, resource records, effects, proof obligations, and source provenance
+- Public `compile_to_ir` pipeline
 - Unit tests for syntax and semantic acceptance/rejection
 - GitHub Actions build/test and formatting workflow
 
 Not implemented:
-- Full QCM-02 Semantic IR, advanced type system, and complete resource ownership/lifecycle enforcement
+- Canonical Semantic IR serialization and cryptographic source/IR binding
+- Explicit resource allocation, borrowing, release, and complete lifecycle enforcement
+- Measurement-result semantics, gate semantics, simulator, and hardware backends
 - Quantum gate syntax or gate semantics
 - Quantum state simulation or physical hardware execution
 - Quantum resource ownership and ancilla lifecycle enforcement
@@ -60,11 +64,11 @@ The parser currently accepts these declarations and blocks only. Gate statements
 
 The planned pipeline is:
 
-`Source → Lexer → Parser/AST → Semantic Kernel v0.1 → typed semantic module → future reference simulator and/or backend`
+`Source → Lexer → Parser/AST → Semantic Kernel → Semantic IR v0.2 → future reference simulator and/or backend`
 
 The semantic model must distinguish classical, quantum, hybrid, boundary, and abstract lifecycle domains. Quantum resources require explicit ownership and lifecycle rules. Measurement is explicit and state-altering. Simulator behavior must not be presented as physical hardware behavior.
 
-See [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline, [frontend syntax specification](docs/language/frontend-syntax-v0.1.md), and [Semantic Kernel v0.1](docs/architecture/semantic-kernel-v0.1.md).
+See [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline, [frontend syntax specification](docs/language/frontend-syntax-v0.1.md), [Semantic Kernel v0.1](docs/architecture/semantic-kernel-v0.1.md), and [Semantic IR v0.2](docs/architecture/semantic-ir-v0.2.md).
 
 ## Project boundaries
 

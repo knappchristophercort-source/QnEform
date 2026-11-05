@@ -6,9 +6,9 @@ fn print_help() {
     println!("Usage:");
     println!("  qneform --version       Print version");
     println!("  qneform --help          Show this help");
-    println!("  qneform check <file>    Lex and parse a QnEform source file");
+    println!("  qneform check <file>    Parse and semantically validate a source file");
     println!();
-    println!("The current frontend is a syntax prototype; it does not execute quantum programs.");
+    println!("Validation does not execute or simulate a quantum program.");
 }
 
 fn main() {
@@ -34,12 +34,17 @@ fn main() {
                     process::exit(1);
                 }
             };
-            match qneform::parse_source(&source) {
-                Ok(program) => {
-                    println!("Syntax OK: {} top-level statement(s)", program.statements.len());
+            match qneform::validate_source(&source) {
+                Ok(module) => {
+                    println!(
+                        "Semantic validation OK: {} instruction(s), {} symbol(s), IR {}",
+                        module.instructions.len(),
+                        module.symbols.len(),
+                        module.ir_version
+                    );
                 }
                 Err(error) => {
-                    eprintln!("Syntax error: {error}");
+                    eprintln!("Validation failed:\n{error}");
                     process::exit(1);
                 }
             }

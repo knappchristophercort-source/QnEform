@@ -400,7 +400,7 @@ mod tests {
     #[test]
     fn accepts_valid_hybrid_program_and_lowers_typed_instructions() {
         let module = analyze_source(
-            "qbit q0; classical { let shots := 100; let label := \"run\"; let enabled := true; let count := shots; } quantum { measure q0; }"
+            "qbit q0; allocate q0; classical { let shots := 100; let label := \"run\"; let enabled := true; let count := shots; } quantum { measure q0; }"
         ).unwrap();
 
         assert_eq!(module.ir_version, "qneform-semantic-0.1");

@@ -1,0 +1,15 @@
+// Minimal QnEform frontend fixture.
+// This file demonstrates syntax only; it is not executed as a quantum circuit.
+
+qbit q0;
+
+quantum {
+    qbit q1;
+    measure q1;
+}
+
+classical {
+    let shots := 100;
+    let label := "baseline";
+    let ready := true;
+}

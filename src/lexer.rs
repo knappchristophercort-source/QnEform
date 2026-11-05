@@ -13,6 +13,11 @@ pub struct Span {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Keyword {
     Qbit,
+    Allocate,
+    Release,
+    Borrow,
+    As,
+    Return,
     Measure,
     Let,
     Quantum,

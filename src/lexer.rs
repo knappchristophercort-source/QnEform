@@ -252,9 +252,9 @@ mod tests {
     #[test]
     fn tokenizes_declarations_and_blocks() {
         let tokens = Lexer::new("quantum { qbit q0; measure q0; }").tokenize().unwrap();
-        assert!(matches!(tokens[0].kind, TokenKind::Keyword(Keyword::Quantum)));
-        assert!(matches!(tokens[2].kind, TokenKind::Keyword(Keyword::Qbit)));
-        assert!(matches!(tokens.last().unwrap().kind, TokenKind::Eof));
+        assert!(matches!(&tokens[0].kind, TokenKind::Keyword(Keyword::Quantum)));
+        assert!(matches!(&tokens[2].kind, TokenKind::Keyword(Keyword::Qbit)));
+        assert!(matches!(&tokens.last().unwrap().kind, TokenKind::Eof));
     }
 
     #[test]

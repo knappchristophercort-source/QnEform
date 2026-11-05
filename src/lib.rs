@@ -8,6 +8,7 @@ pub mod ast;
 pub mod lexer;
 pub mod parser;
 pub mod semantic;
+pub mod semantic_ir;
 
 /// Current crate version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -63,4 +64,23 @@ mod tests {
         assert!(super::validate_source("qbit q0; measure q0;").is_ok());
         assert!(super::validate_source("measure missing;").is_err());
     }
+}
+
+/// Parse, semantically validate, and lower source into QnEform Semantic IR.
+///
+/// The source name is optional provenance metadata. This API does not
+/// serialize the IR or execute it.
+pub fn compile_to_ir(
+    source: &str,
+    source_name: Option<&str>,
+) -> Result<semantic_ir::SemanticIrModule, String> {
+    let program = parse_source(source)?;
+    let validated = semantic::analyze(&program).map_err(|errors| {
+        errors.into_iter()
+            .map(|error| error.to_string())
+            .collect::<Vec<_>>()
+            .join("\\n")
+    })?;
+    semantic_ir::lower(&program, &validated, source_name)
+        .map_err(|error| error.to_string())
 }

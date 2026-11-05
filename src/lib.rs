@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn parses_minimal_qubit_program() {
-        let program = super::parse_source("qbit q0; measure q0;").unwrap();
+        let program = super::parse_source("qbit q0; allocate q0; measure q0;").unwrap();
         assert_eq!(program.statements.len(), 2);
     }
 

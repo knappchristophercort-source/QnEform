@@ -20,8 +20,10 @@ Implemented:
 - GitHub Actions build/test and formatting workflow
 
 Not implemented:
+- Source-language integration of allocation/borrow/release syntax and complete static ownership checking
+- Typed, provenance-bound proof objects for cleanliness and dirty-ancilla restoration
 - Canonical Semantic IR serialization and cryptographic source/IR binding
-- Explicit resource allocation, borrowing, release, and complete lifecycle enforcement
+- Full compiler integration of resource allocation, borrowing, release, and lifecycle enforcement
 - Measurement-result semantics, gate semantics, simulator, and hardware backends
 - Quantum gate syntax or gate semantics
 - Quantum state simulation or physical hardware execution
@@ -66,7 +68,7 @@ The planned pipeline is:
 
 `Source → Lexer → Parser/AST → Semantic Kernel → Semantic IR v0.2 → future reference simulator and/or backend`
 
-The semantic model must distinguish classical, quantum, hybrid, boundary, and abstract lifecycle domains. Quantum resources require explicit ownership and lifecycle rules. Measurement is explicit and state-altering. Simulator behavior must not be presented as physical hardware behavior.
+The semantic model must distinguish classical, quantum, hybrid, boundary, and abstract lifecycle domains. Quantum resources require explicit ownership and lifecycle rules. The initial QCM-03 resource ledger is implemented as a separate bookkeeping API; it is not yet wired into source syntax or backend execution. Measurement is explicit and state-altering. Simulator behavior must not be presented as physical hardware behavior.
 
 See [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline, [frontend syntax specification](docs/language/frontend-syntax-v0.1.md), [Semantic Kernel v0.1](docs/architecture/semantic-kernel-v0.1.md), and [Semantic IR v0.2](docs/architecture/semantic-ir-v0.2.md).
 

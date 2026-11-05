@@ -268,6 +268,10 @@ pub fn lower(
                         message: format!("validated allocation target '{target}' is missing from lowering symbol map"),
                         span: Some(statement.span),
                     })?;
+                    if let Some(record) = resources.iter_mut().find(|record| record.id == resource) {
+                        record.ownership = Ownership::Owned;
+                        record.lifecycle = ResourceLifecycle::Allocated;
+                    }
                     operations.push(Operation { id: *next_operation, kind: OperationKind::AllocateResource(resource),
                         domain, effects: vec![Effect::ResourceAllocation], origin: source_origin(statement.span, source_name) });
                     *next_operation += 1;
@@ -277,6 +281,9 @@ pub fn lower(
                         message: format!("validated release target '{target}' is missing from lowering symbol map"),
                         span: Some(statement.span),
                     })?;
+                    if let Some(record) = resources.iter_mut().find(|record| record.id == resource) {
+                        record.lifecycle = ResourceLifecycle::Released;
+                    }
                     operations.push(Operation { id: *next_operation, kind: OperationKind::ReleaseResource(resource),
                         domain, effects: vec![Effect::ResourceRelease], origin: source_origin(statement.span, source_name) });
                     *next_operation += 1;

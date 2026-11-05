@@ -34,7 +34,7 @@ impl Parser {
 
     fn advance(&mut self) -> Token {
         let token = self.current().clone();
-        if !matches!(token.kind, TokenKind::Eof) {
+        if !matches!(&token.kind, TokenKind::Eof) {
             self.cursor += 1;
         }
         token
@@ -96,7 +96,7 @@ impl Parser {
 
     pub fn parse(mut self) -> Result<Program, ParseError> {
         let mut statements = Vec::new();
-        while !matches!(self.current().kind, TokenKind::Eof) {
+        while !matches!(&self.current().kind, TokenKind::Eof) {
             statements.push(self.parse_statement()?);
         }
         Ok(Program { statements })
@@ -141,7 +141,7 @@ impl Parser {
     fn parse_block(&mut self) -> Result<Vec<Statement>, ParseError> {
         self.expect_kind(TokenKind::LBrace, "'{'")?;
         let mut statements = Vec::new();
-        while !matches!(self.current().kind, TokenKind::RBrace | TokenKind::Eof) {
+        while !matches!(&self.current().kind, TokenKind::RBrace | TokenKind::Eof) {
             statements.push(self.parse_statement()?);
         }
         self.expect_kind(TokenKind::RBrace, "'}'")?;
@@ -170,9 +170,9 @@ mod tests {
             "qbit q0; quantum { qbit q1; measure q1; } classical { let shots := 100; let ready := true; }"
         ).unwrap();
         assert_eq!(program.statements.len(), 3);
-        assert!(matches!(program.statements[0].kind, StatementKind::QubitDeclaration { .. }));
-        assert!(matches!(program.statements[1].kind, StatementKind::QuantumBlock { .. }));
-        assert!(matches!(program.statements[2].kind, StatementKind::ClassicalBlock { .. }));
+        assert!(matches!(&program.statements[0].kind, StatementKind::QubitDeclaration { .. }));
+        assert!(matches!(&program.statements[1].kind, StatementKind::QuantumBlock { .. }));
+        assert!(matches!(&program.statements[2].kind, StatementKind::ClassicalBlock { .. }));
     }
 
     #[test]

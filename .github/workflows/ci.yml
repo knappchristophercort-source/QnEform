@@ -1,0 +1,26 @@
+name: QnEform CI
+
+on:
+  push:
+    branches:
+      - main
+      - "qcm06/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run tests
+        run: cargo test --locked
+      - name: Check formatting
+        run: cargo fmt --all -- --check

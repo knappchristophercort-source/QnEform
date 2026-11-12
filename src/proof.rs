@@ -5,7 +5,7 @@
 //! establish physical quantum-state properties: that assurance belongs to the
 //! configured verifier implementation.
 
-use crate::resource::{ResourceHandle, ResourceKind};
+use crate::resource::{LedgerId, ResourceHandle, ResourceKind};
 
 pub const ATTESTATION_SCHEMA_V1: &str = "qneform-proof-attestation-0.1";
 
@@ -27,6 +27,7 @@ pub enum VerificationDecision {
 pub struct ProofClaim {
     pub schema: String,
     pub module_fingerprint: [u8; 32],
+    pub ledger_id: LedgerId,
     pub resource: ResourceHandle,
     pub resource_kind: ResourceKind,
     pub resource_generation: u64,
@@ -69,16 +70,17 @@ impl VerifiedAttestation {
         if claim.schema != ATTESTATION_SCHEMA_V1 {
             return Err(AttestationError::UnsupportedSchema);
         }
-        if claim.verifier_id.trim().is_empty()
-            || claim.verifier_id != verifier.verifier_id()
-        {
+        if claim.verifier_id.trim().is_empty() || claim.verifier_id != verifier.verifier_id() {
             return Err(AttestationError::EmptyVerifierIdentity);
         }
         let compatible = matches!(
             (claim.resource_kind, claim.proof_kind),
             (ResourceKind::Qubit, ProofKind::Separable)
                 | (ResourceKind::CleanAncilla, ProofKind::CleanAndSeparable)
-                | (ResourceKind::DirtyAncilla, ProofKind::DirtyRestoredAndSeparable)
+                | (
+                    ResourceKind::DirtyAncilla,
+                    ProofKind::DirtyRestoredAndSeparable
+                )
         );
         if !compatible {
             return Err(AttestationError::InvalidProofKindForResource);
@@ -93,12 +95,14 @@ impl VerifiedAttestation {
     pub fn matches(
         &self,
         module_fingerprint: &[u8; 32],
+        ledger_id: LedgerId,
         resource: ResourceHandle,
         resource_kind: ResourceKind,
         resource_generation: u64,
         proof_kind: ProofKind,
     ) -> bool {
         self.claim.module_fingerprint == *module_fingerprint
+            && self.claim.ledger_id == ledger_id
             && self.claim.resource == resource
             && self.claim.resource_kind == resource_kind
             && self.claim.resource_generation == resource_generation
@@ -121,14 +125,20 @@ mod tests {
     struct TestVerifier(VerificationDecision);
 
     impl ProofVerifier for TestVerifier {
-        fn verifier_id(&self) -> &str { "test-verifier/1" }
-        fn verify(&self, _claim: &ProofClaim) -> VerificationDecision { self.0 }
+        fn verifier_id(&self) -> &str {
+            "test-verifier/1"
+        }
+
+        fn verify(&self, _claim: &ProofClaim) -> VerificationDecision {
+            self.0
+        }
     }
 
     fn claim() -> ProofClaim {
         ProofClaim {
             schema: ATTESTATION_SCHEMA_V1.to_owned(),
             module_fingerprint: [7; 32],
+            ledger_id: LedgerId(42),
             resource: ResourceHandle(4),
             resource_kind: ResourceKind::Qubit,
             resource_generation: 2,
@@ -140,14 +150,49 @@ mod tests {
 
     #[test]
     fn verified_receipt_is_bound_to_exact_module_and_resource_generation() {
-        let receipt = VerifiedAttestation::verify(
-            claim(),
-            &TestVerifier(VerificationDecision::Verified),
-        ).unwrap();
-        assert!(receipt.matches(&[7; 32], ResourceHandle(4), ResourceKind::Qubit, 2, ProofKind::Separable));
-        assert!(!receipt.matches(&[8; 32], ResourceHandle(4), ResourceKind::Qubit, 2, ProofKind::Separable));
-        assert!(!receipt.matches(&[7; 32], ResourceHandle(4), ResourceKind::Qubit, 3, ProofKind::Separable));
-        assert!(!receipt.matches(&[7; 32], ResourceHandle(5), ResourceKind::Qubit, 2, ProofKind::Separable));
+        let receipt =
+            VerifiedAttestation::verify(claim(), &TestVerifier(VerificationDecision::Verified))
+                .unwrap();
+        assert!(receipt.matches(
+            &[7; 32],
+            LedgerId(42),
+            ResourceHandle(4),
+            ResourceKind::Qubit,
+            2,
+            ProofKind::Separable
+        ));
+        assert!(!receipt.matches(
+            &[8; 32],
+            LedgerId(42),
+            ResourceHandle(4),
+            ResourceKind::Qubit,
+            2,
+            ProofKind::Separable
+        ));
+        assert!(!receipt.matches(
+            &[7; 32],
+            LedgerId(43),
+            ResourceHandle(4),
+            ResourceKind::Qubit,
+            2,
+            ProofKind::Separable
+        ));
+        assert!(!receipt.matches(
+            &[7; 32],
+            LedgerId(42),
+            ResourceHandle(4),
+            ResourceKind::Qubit,
+            3,
+            ProofKind::Separable
+        ));
+        assert!(!receipt.matches(
+            &[7; 32],
+            LedgerId(42),
+            ResourceHandle(5),
+            ResourceKind::Qubit,
+            2,
+            ProofKind::Separable
+        ));
     }
 
     #[test]

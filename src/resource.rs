@@ -334,6 +334,21 @@ mod tests {
     }
 
     #[test]
+    fn explicit_ledger_identity_is_preserved_for_restore() {
+        let ledger = ResourceLedger::new_with_id(LedgerId(0xA11CE));
+        assert_eq!(ledger.ledger_id(), LedgerId(0xA11CE));
+        let restored = ResourceLedger::new_with_id(ledger.ledger_id());
+        assert_eq!(restored.ledger_id(), ledger.ledger_id());
+    }
+
+    #[test]
+    fn ephemeral_ledgers_receive_distinct_process_local_identities() {
+        let first = ResourceLedger::new();
+        let second = ResourceLedger::new();
+        assert_ne!(first.ledger_id(), second.ledger_id());
+    }
+
+    #[test]
     fn allocates_owned_resource_without_claiming_cleanliness() {
         let mut ledger = ResourceLedger::new();
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();

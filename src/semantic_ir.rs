@@ -162,6 +162,188 @@ pub struct SemanticIrModule {
     pub proof_obligations: Vec<ProofObligation>,
 }
 
+/// Canonical, versioned binary representation of the semantic module.
+///
+/// This encoding intentionally excludes source paths and source spans: they
+/// are provenance metadata, not executable semantic identity. Vector order is
+/// preserved because operation and declaration order are semantically relevant.
+/// Integer values use fixed-width big-endian encoding; strings are UTF-8 with
+/// an unsigned 64-bit byte length prefix. Enum discriminants are explicit and
+/// must never be reordered within this encoding version.
+impl SemanticIrModule {
+    pub fn canonical_bytes(&self) -> Vec<u8> {
+        let mut out = b"QNEFORM-IR-CANON\0".to_vec();
+        put_string(&mut out, "qneform-canonical-ir-v1");
+        put_string(&mut out, &self.schema_version);
+        put_string(&mut out, &self.module_id);
+
+        put_len(&mut out, self.symbols.len());
+        for item in &self.symbols {
+            put_u32(&mut out, item.id.0);
+            put_string(&mut out, &item.name);
+            put_u8(&mut out, value_type_tag(item.value_type));
+            put_u32(&mut out, item.scope.0);
+            put_u8(&mut out, domain_tag(item.domain));
+        }
+
+        put_len(&mut out, self.resources.len());
+        for item in &self.resources {
+            put_u32(&mut out, item.id.0);
+            put_u32(&mut out, item.symbol.0);
+            put_u8(&mut out, resource_kind_tag(item.kind));
+            put_u8(&mut out, ownership_tag(item.ownership));
+            put_u8(&mut out, lifecycle_tag(item.lifecycle));
+            put_u8(&mut out, entanglement_tag(item.entanglement));
+            put_u32(&mut out, item.owner_scope.0);
+        }
+
+        put_len(&mut out, self.operations.len());
+        for item in &self.operations {
+            put_u32(&mut out, item.id);
+            put_u8(&mut out, domain_tag(item.domain));
+            put_len(&mut out, item.effects.len());
+            for effect in &item.effects {
+                put_u8(&mut out, effect_tag(*effect));
+            }
+            match &item.kind {
+                OperationKind::EnterDomain(domain) => {
+                    put_u8(&mut out, 0);
+                    put_u8(&mut out, domain_tag(*domain));
+                }
+                OperationKind::ExitDomain(domain) => {
+                    put_u8(&mut out, 1);
+                    put_u8(&mut out, domain_tag(*domain));
+                }
+                OperationKind::DeclareResource(id) => {
+                    put_u8(&mut out, 2);
+                    put_u32(&mut out, id.0);
+                }
+                OperationKind::AllocateResource(id) => {
+                    put_u8(&mut out, 3);
+                    put_u32(&mut out, id.0);
+                }
+                OperationKind::ReleaseResource(id) => {
+                    put_u8(&mut out, 4);
+                    put_u32(&mut out, id.0);
+                }
+                OperationKind::BorrowResource { target, alias } => {
+                    put_u8(&mut out, 5);
+                    put_u32(&mut out, target.0);
+                    put_string(&mut out, alias);
+                }
+                OperationKind::ReturnBorrow { alias } => {
+                    put_u8(&mut out, 6);
+                    put_string(&mut out, alias);
+                }
+                OperationKind::Measure { target } => {
+                    put_u8(&mut out, 7);
+                    put_u32(&mut out, target.0);
+                }
+                OperationKind::Bind { target, value } => {
+                    put_u8(&mut out, 8);
+                    put_u32(&mut out, target.0);
+                    match value {
+                        Operand::Symbol(id) => {
+                            put_u8(&mut out, 0);
+                            put_u32(&mut out, id.0);
+                        }
+                        Operand::Resource(id) => {
+                            put_u8(&mut out, 1);
+                            put_u32(&mut out, id.0);
+                        }
+                        Operand::NumberLiteral(value) => {
+                            put_u8(&mut out, 2);
+                            put_string(&mut out, value);
+                        }
+                        Operand::StringLiteral(value) => {
+                            put_u8(&mut out, 3);
+                            put_string(&mut out, value);
+                        }
+                        Operand::BooleanLiteral(value) => {
+                            put_u8(&mut out, 4);
+                            put_u8(&mut out, u8::from(*value));
+                        }
+                    }
+                }
+            }
+        }
+
+        put_len(&mut out, self.effects.len());
+        for effect in &self.effects {
+            put_u8(&mut out, effect_tag(*effect));
+        }
+
+        put_len(&mut out, self.proof_obligations.len());
+        for item in &self.proof_obligations {
+            put_u32(&mut out, item.id);
+            put_u8(&mut out, obligation_tag(item.kind));
+            match item.subject_resource {
+                Some(id) => {
+                    put_u8(&mut out, 1);
+                    put_u32(&mut out, id.0);
+                }
+                None => put_u8(&mut out, 0),
+            }
+            put_u8(&mut out, u8::from(item.required));
+            put_u8(&mut out, u8::from(item.satisfied));
+            put_string(&mut out, &item.description);
+        }
+        out
+    }
+}
+
+fn put_u8(out: &mut Vec<u8>, value: u8) {
+    out.push(value);
+}
+
+fn put_u32(out: &mut Vec<u8>, value: u32) {
+    out.extend_from_slice(&value.to_be_bytes());
+}
+
+fn put_len(out: &mut Vec<u8>, value: usize) {
+    out.extend_from_slice(&(value as u64).to_be_bytes());
+}
+
+fn put_string(out: &mut Vec<u8>, value: &str) {
+    put_len(out, value.len());
+    out.extend_from_slice(value.as_bytes());
+}
+
+fn domain_tag(value: Domain) -> u8 {
+    match value { Domain::Hybrid => 0, Domain::Quantum => 1, Domain::Classical => 2 }
+}
+fn value_type_tag(value: ValueType) -> u8 {
+    match value { ValueType::Qubit => 0, ValueType::Number => 1, ValueType::String => 2, ValueType::Boolean => 3 }
+}
+fn resource_kind_tag(value: ResourceKind) -> u8 {
+    match value { ResourceKind::Qubit => 0, ResourceKind::QubitRegister => 1, ResourceKind::CleanAncilla => 2, ResourceKind::DirtyAncilla => 3 }
+}
+fn ownership_tag(value: Ownership) -> u8 {
+    match value { Ownership::Owned => 0, Ownership::Borrowed => 1, Ownership::Unassigned => 2 }
+}
+fn lifecycle_tag(value: ResourceLifecycle) -> u8 {
+    match value { ResourceLifecycle::Declared => 0, ResourceLifecycle::Allocated => 1, ResourceLifecycle::Active => 2, ResourceLifecycle::Uncomputed => 3, ResourceLifecycle::VerifiedClean => 4, ResourceLifecycle::Released => 5, ResourceLifecycle::Unknown => 6 }
+}
+fn entanglement_tag(value: EntanglementStatus) -> u8 {
+    match value { EntanglementStatus::KnownSeparable => 0, EntanglementStatus::PossiblyEntangled => 1, EntanglementStatus::KnownEntangled => 2, EntanglementStatus::Unknown => 3 }
+}
+fn effect_tag(value: Effect) -> u8 {
+    match value {
+        Effect::PureClassical => 0, Effect::QuantumResourceDeclaration => 1,
+        Effect::Measurement => 2, Effect::Unitary => 3, Effect::NonunitaryChannel => 4,
+        Effect::ResourceAllocation => 5, Effect::ResourceRelease => 6,
+        Effect::ClassicalControl => 7, Effect::ParameterUpdate => 8,
+        Effect::Observation => 9, Effect::Suspend => 10, Effect::Restore => 11,
+    }
+}
+fn obligation_tag(value: ProofObligationKind) -> u8 {
+    match value {
+        ProofObligationKind::ResourceOwnership => 0, ProofObligationKind::ResourceLifecycle => 1,
+        ProofObligationKind::AncillaCleanliness => 2, ProofObligationKind::Reversibility => 3,
+        ProofObligationKind::MeasurementSemantics => 4, ProofObligationKind::BackendConformance => 5,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweringError {
     pub message: String,
@@ -608,6 +790,24 @@ mod tests {
     fn module_local_ids_are_deterministic_for_same_input() {
         let source = "qbit q0; allocate q0; measure q0;";
         assert_eq!(lower_source(source), lower_source(source));
+    }
+
+    #[test]
+    fn canonical_encoding_is_stable_and_excludes_source_provenance() {
+        let mut first = lower_source("qbit q0; allocate q0; measure q0;");
+        let mut second = first.clone();
+        second.source_name = Some("different/path.qn".to_owned());
+        second.symbols[0].origin.source_name = Some("different/path.qn".to_owned());
+        second.symbols[0].origin.span.line += 20;
+        assert_eq!(first.canonical_bytes(), second.canonical_bytes());
+        assert_eq!(first.canonical_bytes(), first.clone().canonical_bytes());
+    }
+
+    #[test]
+    fn canonical_encoding_changes_when_semantics_change() {
+        let first = lower_source("let shots := 10;");
+        let second = lower_source("let shots := 11;");
+        assert_ne!(first.canonical_bytes(), second.canonical_bytes());
     }
 
     #[test]

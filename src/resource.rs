@@ -303,7 +303,17 @@ mod tests {
     use super::*;
     use crate::proof::{ProofClaim, ProofVerifier, VerificationDecision, ATTESTATION_SCHEMA_V1};
 
-    fn module() -> SemanticIrModule {\n        crate::compile_to_ir("qbit q0; allocate q0; measure q0;", Some("test.qn")).unwrap()\n    }
+    fn module() -> SemanticIrModule {
+        crate::compile_to_ir("qbit q0; allocate q0; measure q0;", Some("test.qn")).unwrap()
+    }
+
+    fn other_module() -> SemanticIrModule {
+        crate::compile_to_ir(
+            "qbit q0; allocate q0; measure q0; let shots := 2;",
+            Some("other.qn"),
+        )
+        .unwrap()
+    }
 
     struct TestVerifier;
     impl ProofVerifier for TestVerifier {
@@ -404,7 +414,7 @@ mod tests {
         separable(&mut ledger, q);
         let proof = receipt(&ledger, q);
         assert_eq!(
-            ledger.release(q, &[8; 32], &proof),
+            ledger.release(q, &other_module(), &proof),
             Err(ResourceError::MissingOrMismatchedAttestation)
         );
     }

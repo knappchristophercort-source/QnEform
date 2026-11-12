@@ -63,7 +63,11 @@ pub struct LexError {
 
 impl std::fmt::Display for LexError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} at {}:{}", self.message, self.span.line, self.span.column)
+        write!(
+            f,
+            "{} at {}:{}",
+            self.message, self.span.line, self.span.column
+        )
     }
 }
 
@@ -78,7 +82,12 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Self {
-        Self { source, offset: 0, line: 1, column: 1 }
+        Self {
+            source,
+            offset: 0,
+            line: 1,
+            column: 1,
+        }
     }
 
     fn peek(&self) -> Option<char> {
@@ -104,11 +113,25 @@ impl<'a> Lexer<'a> {
     }
 
     fn span_from(&self, start: usize, line: usize, column: usize) -> Span {
-        Span { start, end: self.offset, line, column }
+        Span {
+            start,
+            end: self.offset,
+            line,
+            column,
+        }
     }
 
-    fn error(&self, message: impl Into<String>, start: usize, line: usize, column: usize) -> LexError {
-        LexError { message: message.into(), span: self.span_from(start, line, column) }
+    fn error(
+        &self,
+        message: impl Into<String>,
+        start: usize,
+        line: usize,
+        column: usize,
+    ) -> LexError {
+        LexError {
+            message: message.into(),
+            span: self.span_from(start, line, column),
+        }
     }
 
     fn skip_trivia(&mut self) -> Result<(), LexError> {
@@ -118,7 +141,9 @@ impl<'a> Lexer<'a> {
             }
             if self.peek() == Some('/') && self.peek_second() == Some('/') {
                 while let Some(ch) = self.bump() {
-                    if ch == '\n' { break; }
+                    if ch == '\n' {
+                        break;
+                    }
                 }
                 continue;
             }
@@ -155,14 +180,22 @@ impl<'a> Lexer<'a> {
             let Some(ch) = self.peek() else {
                 tokens.push(Token {
                     kind: TokenKind::Eof,
-                    span: Span { start, end: start, line, column },
+                    span: Span {
+                        start,
+                        end: start,
+                        line,
+                        column,
+                    },
                 });
                 return Ok(tokens);
             };
 
             let kind = if ch.is_ascii_alphabetic() || ch == '_' {
                 let mut word = String::new();
-                while self.peek().is_some_and(|c| c.is_ascii_alphanumeric() || c == '_') {
+                while self
+                    .peek()
+                    .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+                {
                     word.push(self.bump().expect("peeked character exists"));
                 }
                 match word.as_str() {
@@ -185,7 +218,9 @@ impl<'a> Lexer<'a> {
                 while self.peek().is_some_and(|c| c.is_ascii_digit() || c == '_') {
                     number.push(self.bump().expect("peeked character exists"));
                 }
-                if self.peek() == Some('.') && self.peek_second().is_some_and(|c| c.is_ascii_digit()) {
+                if self.peek() == Some('.')
+                    && self.peek_second().is_some_and(|c| c.is_ascii_digit())
+                {
                     number.push(self.bump().expect("decimal point exists"));
                     while self.peek().is_some_and(|c| c.is_ascii_digit() || c == '_') {
                         number.push(self.bump().expect("peeked character exists"));
@@ -206,24 +241,60 @@ impl<'a> Lexer<'a> {
                                     Some('t') => value.push('\t'),
                                     Some('"') => value.push('"'),
                                     Some('\\') => value.push('\\'),
-                                    Some(other) => return Err(self.error(
-                                        format!("unsupported escape sequence: \\{other}"),
-                                        start, line, column,
-                                    )),
-                                    None => return Err(self.error("unterminated string escape", start, line, column)),
+                                    Some(other) => {
+                                        return Err(self.error(
+                                            format!("unsupported escape sequence: \\{other}"),
+                                            start,
+                                            line,
+                                            column,
+                                        ))
+                                    }
+                                    None => {
+                                        return Err(self.error(
+                                            "unterminated string escape",
+                                            start,
+                                            line,
+                                            column,
+                                        ))
+                                    }
                                 },
                                 Some(c) => value.push(c),
-                                None => return Err(self.error("unterminated string literal", start, line, column)),
+                                None => {
+                                    return Err(self.error(
+                                        "unterminated string literal",
+                                        start,
+                                        line,
+                                        column,
+                                    ))
+                                }
                             }
                         }
                         TokenKind::String(value)
                     }
-                    ';' => { self.bump(); TokenKind::Semicolon }
-                    ',' => { self.bump(); TokenKind::Comma }
-                    '(' => { self.bump(); TokenKind::LParen }
-                    ')' => { self.bump(); TokenKind::RParen }
-                    '{' => { self.bump(); TokenKind::LBrace }
-                    '}' => { self.bump(); TokenKind::RBrace }
+                    ';' => {
+                        self.bump();
+                        TokenKind::Semicolon
+                    }
+                    ',' => {
+                        self.bump();
+                        TokenKind::Comma
+                    }
+                    '(' => {
+                        self.bump();
+                        TokenKind::LParen
+                    }
+                    ')' => {
+                        self.bump();
+                        TokenKind::RParen
+                    }
+                    '{' => {
+                        self.bump();
+                        TokenKind::LBrace
+                    }
+                    '}' => {
+                        self.bump();
+                        TokenKind::RBrace
+                    }
                     ':' => {
                         self.bump();
                         if self.peek() == Some('=') {
@@ -242,15 +313,37 @@ impl<'a> Lexer<'a> {
                             TokenKind::Minus
                         }
                     }
-                    '+' => { self.bump(); TokenKind::Plus }
-                    '*' => { self.bump(); TokenKind::Star }
-                    '/' => { self.bump(); TokenKind::Slash }
-                    '.' => { self.bump(); TokenKind::Dot }
-                    other => return Err(self.error(format!("unexpected character '{other}'"), start, line, column)),
+                    '+' => {
+                        self.bump();
+                        TokenKind::Plus
+                    }
+                    '*' => {
+                        self.bump();
+                        TokenKind::Star
+                    }
+                    '/' => {
+                        self.bump();
+                        TokenKind::Slash
+                    }
+                    '.' => {
+                        self.bump();
+                        TokenKind::Dot
+                    }
+                    other => {
+                        return Err(self.error(
+                            format!("unexpected character '{other}'"),
+                            start,
+                            line,
+                            column,
+                        ))
+                    }
                 }
             };
 
-            tokens.push(Token { kind, span: self.span_from(start, line, column) });
+            tokens.push(Token {
+                kind,
+                span: self.span_from(start, line, column),
+            });
         }
     }
 }
@@ -261,8 +354,13 @@ mod tests {
 
     #[test]
     fn tokenizes_declarations_and_blocks() {
-        let tokens = Lexer::new("quantum { qbit q0; measure q0; }").tokenize().unwrap();
-        assert!(matches!(&tokens[0].kind, TokenKind::Keyword(Keyword::Quantum)));
+        let tokens = Lexer::new("quantum { qbit q0; measure q0; }")
+            .tokenize()
+            .unwrap();
+        assert!(matches!(
+            &tokens[0].kind,
+            TokenKind::Keyword(Keyword::Quantum)
+        ));
         assert!(matches!(&tokens[2].kind, TokenKind::Keyword(Keyword::Qbit)));
         assert!(matches!(&tokens.last().unwrap().kind, TokenKind::Eof));
     }
@@ -270,10 +368,11 @@ mod tests {
     #[test]
     fn handles_comments_and_escaped_strings() {
         let tokens = Lexer::new("// heading\nlet message := \"hello\\nworld\"; /* done */")
-            .tokenize().unwrap();
-        assert!(tokens.iter().any(|token| {
-            token.kind == TokenKind::String("hello\nworld".to_owned())
-        }));
+            .tokenize()
+            .unwrap();
+        assert!(tokens
+            .iter()
+            .any(|token| { token.kind == TokenKind::String("hello\nworld".to_owned()) }));
     }
 
     #[test]

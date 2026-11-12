@@ -268,12 +268,18 @@ pub fn lower(
                         message: format!("validated allocation target '{target}' is missing from lowering symbol map"),
                         span: Some(statement.span),
                     })?;
-                    if let Some(record) = resources.iter_mut().find(|record| record.id == resource) {
+                    if let Some(record) = resources.iter_mut().find(|record| record.id == resource)
+                    {
                         record.ownership = Ownership::Owned;
                         record.lifecycle = ResourceLifecycle::Allocated;
                     }
-                    operations.push(Operation { id: *next_operation, kind: OperationKind::AllocateResource(resource),
-                        domain, effects: vec![Effect::ResourceAllocation], origin: source_origin(statement.span, source_name) });
+                    operations.push(Operation {
+                        id: *next_operation,
+                        kind: OperationKind::AllocateResource(resource),
+                        domain,
+                        effects: vec![Effect::ResourceAllocation],
+                        origin: source_origin(statement.span, source_name),
+                    });
                     *next_operation += 1;
                 }
                 StatementKind::Release { target } => {
@@ -281,11 +287,17 @@ pub fn lower(
                         message: format!("validated release target '{target}' is missing from lowering symbol map"),
                         span: Some(statement.span),
                     })?;
-                    if let Some(record) = resources.iter_mut().find(|record| record.id == resource) {
+                    if let Some(record) = resources.iter_mut().find(|record| record.id == resource)
+                    {
                         record.lifecycle = ResourceLifecycle::Released;
                     }
-                    operations.push(Operation { id: *next_operation, kind: OperationKind::ReleaseResource(resource),
-                        domain, effects: vec![Effect::ResourceRelease], origin: source_origin(statement.span, source_name) });
+                    operations.push(Operation {
+                        id: *next_operation,
+                        kind: OperationKind::ReleaseResource(resource),
+                        domain,
+                        effects: vec![Effect::ResourceRelease],
+                        origin: source_origin(statement.span, source_name),
+                    });
                     *next_operation += 1;
                 }
                 StatementKind::Borrow { target, alias } => {
@@ -293,13 +305,28 @@ pub fn lower(
                         message: format!("validated borrow target '{target}' is missing from lowering symbol map"),
                         span: Some(statement.span),
                     })?;
-                    operations.push(Operation { id: *next_operation, kind: OperationKind::BorrowResource { target: resource, alias: alias.clone() },
-                        domain, effects: vec![], origin: source_origin(statement.span, source_name) });
+                    operations.push(Operation {
+                        id: *next_operation,
+                        kind: OperationKind::BorrowResource {
+                            target: resource,
+                            alias: alias.clone(),
+                        },
+                        domain,
+                        effects: vec![],
+                        origin: source_origin(statement.span, source_name),
+                    });
                     *next_operation += 1;
                 }
                 StatementKind::ReturnBorrow { alias } => {
-                    operations.push(Operation { id: *next_operation, kind: OperationKind::ReturnBorrow { alias: alias.clone() },
-                        domain, effects: vec![], origin: source_origin(statement.span, source_name) });
+                    operations.push(Operation {
+                        id: *next_operation,
+                        kind: OperationKind::ReturnBorrow {
+                            alias: alias.clone(),
+                        },
+                        domain,
+                        effects: vec![],
+                        origin: source_origin(statement.span, source_name),
+                    });
                     *next_operation += 1;
                 }
                 StatementKind::Measurement { target } => {
@@ -320,18 +347,23 @@ pub fn lower(
                     let symbol = SymbolId(*next_symbol);
                     *next_symbol += 1;
                     let (value_type, operand) = match value {
-                        crate::ast::Expression::Number(value) =>
-                            (ValueType::Number, Operand::NumberLiteral(value.clone())),
-                        crate::ast::Expression::String(value) =>
-                            (ValueType::String, Operand::StringLiteral(value.clone())),
-                        crate::ast::Expression::Boolean(value) =>
-                            (ValueType::Boolean, Operand::BooleanLiteral(*value)),
+                        crate::ast::Expression::Number(value) => {
+                            (ValueType::Number, Operand::NumberLiteral(value.clone()))
+                        }
+                        crate::ast::Expression::String(value) => {
+                            (ValueType::String, Operand::StringLiteral(value.clone()))
+                        }
+                        crate::ast::Expression::Boolean(value) => {
+                            (ValueType::Boolean, Operand::BooleanLiteral(*value))
+                        }
                         crate::ast::Expression::Identifier(reference) => {
                             let referenced = *symbol_ids.get(reference).ok_or_else(|| LoweringError {
                                 message: format!("validated reference '{reference}' is missing from lowering symbol map"),
                                 span: Some(statement.span),
                             })?;
-                            let record = symbols.iter().find(|record| record.id == referenced)
+                            let record = symbols
+                                .iter()
+                                .find(|record| record.id == referenced)
                                 .ok_or_else(|| LoweringError {
                                     message: format!("symbol record for '{reference}' is missing"),
                                     span: Some(statement.span),
@@ -351,7 +383,10 @@ pub fn lower(
                     });
                     operations.push(Operation {
                         id: *next_operation,
-                        kind: OperationKind::Bind { target: symbol, value: operand },
+                        kind: OperationKind::Bind {
+                            target: symbol,
+                            value: operand,
+                        },
                         domain,
                         effects: vec![Effect::PureClassical],
                         origin: source_origin(statement.span, source_name),
@@ -370,9 +405,21 @@ pub fn lower(
                         origin: source_origin(statement.span, source_name),
                     });
                     *next_operation += 1;
-                    walk(nested, Domain::Quantum, scope_stack, next_scope, next_symbol,
-                        next_resource, next_operation, symbols, resources, operations,
-                        symbol_ids, resource_ids, source_name)?;
+                    walk(
+                        nested,
+                        Domain::Quantum,
+                        scope_stack,
+                        next_scope,
+                        next_symbol,
+                        next_resource,
+                        next_operation,
+                        symbols,
+                        resources,
+                        operations,
+                        symbol_ids,
+                        resource_ids,
+                        source_name,
+                    )?;
                     operations.push(Operation {
                         id: *next_operation,
                         kind: OperationKind::ExitDomain(Domain::Quantum),
@@ -395,9 +442,21 @@ pub fn lower(
                         origin: source_origin(statement.span, source_name),
                     });
                     *next_operation += 1;
-                    walk(nested, Domain::Classical, scope_stack, next_scope, next_symbol,
-                        next_resource, next_operation, symbols, resources, operations,
-                        symbol_ids, resource_ids, source_name)?;
+                    walk(
+                        nested,
+                        Domain::Classical,
+                        scope_stack,
+                        next_scope,
+                        next_symbol,
+                        next_resource,
+                        next_operation,
+                        symbols,
+                        resources,
+                        operations,
+                        symbol_ids,
+                        resource_ids,
+                        source_name,
+                    )?;
                     operations.push(Operation {
                         id: *next_operation,
                         kind: OperationKind::ExitDomain(Domain::Classical),
@@ -416,16 +475,22 @@ pub fn lower(
     // Verify that the semantic instruction stream and AST have matching
     // statement counts before lowering. This is a consistency guard, not a
     // cryptographic provenance proof.
-    let expected_non_block = validated.instructions.iter().filter(|instruction| matches!(
-        instruction,
-        SemanticInstruction::DeclareQubit { .. } |
-        SemanticInstruction::Allocate { .. } |
-        SemanticInstruction::Release { .. } |
-        SemanticInstruction::Borrow { .. } |
-        SemanticInstruction::ReturnBorrow { .. } |
-        SemanticInstruction::Measure { .. } |
-        SemanticInstruction::Bind { .. }
-    )).count();
+    let expected_non_block = validated
+        .instructions
+        .iter()
+        .filter(|instruction| {
+            matches!(
+                instruction,
+                SemanticInstruction::DeclareQubit { .. }
+                    | SemanticInstruction::Allocate { .. }
+                    | SemanticInstruction::Release { .. }
+                    | SemanticInstruction::Borrow { .. }
+                    | SemanticInstruction::ReturnBorrow { .. }
+                    | SemanticInstruction::Measure { .. }
+                    | SemanticInstruction::Bind { .. }
+            )
+        })
+        .count();
     let ast_non_block = count_non_block_statements(&program.statements);
     if expected_non_block != ast_non_block {
         return Err(LoweringError {
@@ -435,10 +500,19 @@ pub fn lower(
     }
 
     walk(
-        &program.statements, Domain::Hybrid, &mut scope_stack, &mut next_scope,
-        &mut next_symbol, &mut next_resource, &mut next_operation,
-        &mut symbols, &mut resources, &mut operations,
-        &mut symbol_ids, &mut resource_ids, source_name,
+        &program.statements,
+        Domain::Hybrid,
+        &mut scope_stack,
+        &mut next_scope,
+        &mut next_symbol,
+        &mut next_resource,
+        &mut next_operation,
+        &mut symbols,
+        &mut resources,
+        &mut operations,
+        &mut symbol_ids,
+        &mut resource_ids,
+        source_name,
     )?;
 
     for operation in &operations {
@@ -449,15 +523,19 @@ pub fn lower(
         }
     }
 
-    let proof_obligations = resources.iter().map(|resource| ProofObligation {
-        id: resource.id.0,
-        kind: ProofObligationKind::ResourceOwnership,
-        subject_resource: Some(resource.id),
-        required: true,
-        satisfied: false,
-        source: Some(resource.origin.span),
-        description: "Resource ownership is not yet assigned by the current source language.".to_owned(),
-    }).collect();
+    let proof_obligations = resources
+        .iter()
+        .map(|resource| ProofObligation {
+            id: resource.id.0,
+            kind: ProofObligationKind::ResourceOwnership,
+            subject_resource: Some(resource.id),
+            required: true,
+            satisfied: false,
+            source: Some(resource.origin.span),
+            description: "Resource ownership is not yet assigned by the current source language."
+                .to_owned(),
+        })
+        .collect();
 
     Ok(SemanticIrModule {
         schema_version: "qneform-ir-0.2".to_owned(),
@@ -473,11 +551,16 @@ pub fn lower(
 
 fn count_non_block_statements(statements: &[crate::ast::Statement]) -> usize {
     use crate::ast::StatementKind;
-    statements.iter().map(|statement| match &statement.kind {
-        StatementKind::QuantumBlock { statements } |
-        StatementKind::ClassicalBlock { statements } => count_non_block_statements(statements),
-        _ => 1,
-    }).sum()
+    statements
+        .iter()
+        .map(|statement| match &statement.kind {
+            StatementKind::QuantumBlock { statements }
+            | StatementKind::ClassicalBlock { statements } => {
+                count_non_block_statements(statements)
+            }
+            _ => 1,
+        })
+        .sum()
 }
 
 #[cfg(test)]
@@ -494,13 +577,18 @@ mod tests {
 
     #[test]
     fn lowers_symbols_resources_effects_and_provenance() {
-        let ir = lower_source("qbit q0; allocate q0; quantum { measure q0; } classical { let shots := 10; }");
+        let ir = lower_source(
+            "qbit q0; allocate q0; quantum { measure q0; } classical { let shots := 10; }",
+        );
         assert_eq!(ir.schema_version, "qneform-ir-0.2");
         assert_eq!(ir.resources.len(), 1);
         assert_eq!(ir.resources[0].lifecycle, ResourceLifecycle::Allocated);
         assert_eq!(ir.resources[0].ownership, Ownership::Owned);
         assert!(ir.effects.contains(&Effect::Measurement));
-        assert!(ir.symbols.iter().all(|symbol| symbol.origin.source_name.as_deref() == Some("test.qn")));
+        assert!(ir
+            .symbols
+            .iter()
+            .all(|symbol| symbol.origin.source_name.as_deref() == Some("test.qn")));
     }
 
     #[test]

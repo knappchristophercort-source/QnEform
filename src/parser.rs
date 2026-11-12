@@ -11,7 +11,11 @@ pub struct ParseError {
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} at {}:{}", self.message, self.span.line, self.span.column)
+        write!(
+            f,
+            "{} at {}:{}",
+            self.message, self.span.line, self.span.column
+        )
     }
 }
 
@@ -28,7 +32,9 @@ impl Parser {
     }
 
     fn current(&self) -> &Token {
-        self.tokens.get(self.cursor).or_else(|| self.tokens.last())
+        self.tokens
+            .get(self.cursor)
+            .or_else(|| self.tokens.last())
             .expect("lexer always emits an EOF token")
     }
 
@@ -41,7 +47,10 @@ impl Parser {
     }
 
     fn error_here(&self, message: impl Into<String>) -> ParseError {
-        ParseError { message: message.into(), span: self.current().span }
+        ParseError {
+            message: message.into(),
+            span: self.current().span,
+        }
     }
 
     fn expect_identifier(&mut self) -> Result<(String, Span), ParseError> {
@@ -67,7 +76,11 @@ impl Parser {
         }
     }
 
-    fn expect_keyword(&mut self, expected: Keyword, description: &str) -> Result<Token, ParseError> {
+    fn expect_keyword(
+        &mut self,
+        expected: Keyword,
+        description: &str,
+    ) -> Result<Token, ParseError> {
         let token = self.advance();
         if token.kind == TokenKind::Keyword(expected) {
             Ok(token)
@@ -108,19 +121,28 @@ impl Parser {
                 let start = self.advance().span;
                 let (name, _) = self.expect_identifier()?;
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
-                Ok(Statement { kind: StatementKind::QubitDeclaration { name }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::QubitDeclaration { name },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Allocate) => {
                 let start = self.advance().span;
                 let (target, _) = self.expect_identifier()?;
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
-                Ok(Statement { kind: StatementKind::Allocate { target }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::Allocate { target },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Release) => {
                 let start = self.advance().span;
                 let (target, _) = self.expect_identifier()?;
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
-                Ok(Statement { kind: StatementKind::Release { target }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::Release { target },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Borrow) => {
                 let start = self.advance().span;
@@ -128,19 +150,28 @@ impl Parser {
                 self.expect_keyword(Keyword::As, "'as'")?;
                 let (alias, _) = self.expect_identifier()?;
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
-                Ok(Statement { kind: StatementKind::Borrow { target, alias }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::Borrow { target, alias },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Return) => {
                 let start = self.advance().span;
                 let (alias, _) = self.expect_identifier()?;
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
-                Ok(Statement { kind: StatementKind::ReturnBorrow { alias }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::ReturnBorrow { alias },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Measure) => {
                 let start = self.advance().span;
                 let (target, _) = self.expect_identifier()?;
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
-                Ok(Statement { kind: StatementKind::Measurement { target }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::Measurement { target },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Let) => {
                 let start = self.advance().span;
@@ -148,17 +179,26 @@ impl Parser {
                 self.expect_kind(TokenKind::Assign, "':='")?;
                 let value = self.parse_expression()?;
                 self.expect_kind(TokenKind::Semicolon, "';'")?;
-                Ok(Statement { kind: StatementKind::LetBinding { name, value }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::LetBinding { name, value },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Quantum) => {
                 let start = self.advance().span;
                 let statements = self.parse_block()?;
-                Ok(Statement { kind: StatementKind::QuantumBlock { statements }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::QuantumBlock { statements },
+                    span: start,
+                })
             }
             TokenKind::Keyword(Keyword::Classical) => {
                 let start = self.advance().span;
                 let statements = self.parse_block()?;
-                Ok(Statement { kind: StatementKind::ClassicalBlock { statements }, span: start })
+                Ok(Statement {
+                    kind: StatementKind::ClassicalBlock { statements },
+                    span: start,
+                })
             }
             _ => Err(self.error_here("expected qbit, measure, let, quantum, or classical")),
         }
@@ -186,8 +226,12 @@ mod tests {
     use crate::lexer::Lexer;
 
     fn parse(source: &str) -> Result<Program, String> {
-        let tokens = Lexer::new(source).tokenize().map_err(|error| error.to_string())?;
-        Parser::new(tokens).parse().map_err(|error| error.to_string())
+        let tokens = Lexer::new(source)
+            .tokenize()
+            .map_err(|error| error.to_string())?;
+        Parser::new(tokens)
+            .parse()
+            .map_err(|error| error.to_string())
     }
 
     #[test]
@@ -196,9 +240,18 @@ mod tests {
             "qbit q0; quantum { qbit q1; measure q1; } classical { let shots := 100; let ready := true; }"
         ).unwrap();
         assert_eq!(program.statements.len(), 3);
-        assert!(matches!(&program.statements[0].kind, StatementKind::QubitDeclaration { .. }));
-        assert!(matches!(&program.statements[1].kind, StatementKind::QuantumBlock { .. }));
-        assert!(matches!(&program.statements[2].kind, StatementKind::ClassicalBlock { .. }));
+        assert!(matches!(
+            &program.statements[0].kind,
+            StatementKind::QubitDeclaration { .. }
+        ));
+        assert!(matches!(
+            &program.statements[1].kind,
+            StatementKind::QuantumBlock { .. }
+        ));
+        assert!(matches!(
+            &program.statements[2].kind,
+            StatementKind::ClassicalBlock { .. }
+        ));
     }
 
     #[test]

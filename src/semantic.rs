@@ -26,13 +26,30 @@ pub enum ValueType {
 pub enum SemanticInstruction {
     EnterDomain(Domain),
     ExitDomain(Domain),
-    DeclareQubit { name: String },
-    Allocate { target: String },
-    Release { target: String },
-    Borrow { target: String, alias: String },
-    ReturnBorrow { alias: String },
-    Measure { target: String },
-    Bind { name: String, value_type: ValueType, source: BoundValue },
+    DeclareQubit {
+        name: String,
+    },
+    Allocate {
+        target: String,
+    },
+    Release {
+        target: String,
+    },
+    Borrow {
+        target: String,
+        alias: String,
+    },
+    ReturnBorrow {
+        alias: String,
+    },
+    Measure {
+        target: String,
+    },
+    Bind {
+        name: String,
+        value_type: ValueType,
+        source: BoundValue,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,7 +84,11 @@ pub struct SemanticError {
 
 impl std::fmt::Display for SemanticError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {} at {}:{}", self.code, self.message, self.span.line, self.span.column)
+        write!(
+            f,
+            "{}: {} at {}:{}",
+            self.code, self.message, self.span.line, self.span.column
+        )
     }
 }
 
@@ -87,6 +108,8 @@ struct Analyzer {
     allocated: HashMap<String, bool>,
     released: HashMap<String, bool>,
     borrows: HashMap<String, String>,
+    borrow_scope_depth: HashMap<String, usize>,
+    scope_depth: usize,
     borrow_counts: HashMap<String, usize>,
 }
 
@@ -101,12 +124,18 @@ impl Analyzer {
             allocated: HashMap::new(),
             released: HashMap::new(),
             borrows: HashMap::new(),
+            borrow_scope_depth: HashMap::new(),
+            scope_depth: 0,
             borrow_counts: HashMap::new(),
         }
     }
 
     fn error(&mut self, code: &'static str, message: impl Into<String>, span: Span) {
-        self.errors.push(SemanticError { code, message: message.into(), span });
+        self.errors.push(SemanticError {
+            code,
+            message: message.into(),
+            span,
+        });
     }
 
     fn lookup(&self, name: &str) -> Option<&Symbol> {
@@ -132,10 +161,10 @@ impl Analyzer {
             declared_at: span,
             domain: self.domain,
         };
-        self.scopes.last_mut().expect("analyzer always has a scope").insert(
-            name.to_owned(),
-            Symbol { info: info.clone() },
-        );
+        self.scopes
+            .last_mut()
+            .expect("analyzer always has a scope")
+            .insert(name.to_owned(), Symbol { info: info.clone() });
         self.symbols.push(info);
         true
     }
@@ -152,7 +181,9 @@ impl Analyzer {
                 if self.domain == Domain::Classical {
                     self.error(
                         "SEM_QUBIT_IN_CLASSICAL_DOMAIN",
-                        format!("quantum resource '{name}' cannot be declared inside a classical block"),
+                        format!(
+                            "quantum resource '{name}' cannot be declared inside a classical block"
+                        ),
                         statement.span,
                     );
                     return;
@@ -161,74 +192,152 @@ impl Analyzer {
                     self.allocated.insert(name.clone(), false);
                     self.released.insert(name.clone(), false);
                     self.borrow_counts.insert(name.clone(), 0);
-                    self.instructions.push(SemanticInstruction::DeclareQubit { name: name.clone() });
+                    self.instructions
+                        .push(SemanticInstruction::DeclareQubit { name: name.clone() });
                 }
             }
             StatementKind::Allocate { target } => {
                 if self.domain == Domain::Classical {
-                    self.error("SEM_RESOURCE_OPERATION_IN_CLASSICAL_DOMAIN", "allocation is not permitted in a classical block", statement.span);
+                    self.error(
+                        "SEM_RESOURCE_OPERATION_IN_CLASSICAL_DOMAIN",
+                        "allocation is not permitted in a classical block",
+                        statement.span,
+                    );
                     return;
                 }
                 if self.lookup(target).map(|s| s.info.value_type) != Some(ValueType::Qubit) {
-                    self.error("SEM_UNRESOLVED_QUANTUM_RESOURCE", format!("allocation target '{target}' is not a declared qubit"), statement.span);
+                    self.error(
+                        "SEM_UNRESOLVED_QUANTUM_RESOURCE",
+                        format!("allocation target '{target}' is not a declared qubit"),
+                        statement.span,
+                    );
                     return;
                 }
-                if self.allocated.get(target).copied().unwrap_or(false) || self.released.get(target).copied().unwrap_or(false) {
-                    self.error("SEM_INVALID_RESOURCE_ALLOCATION", format!("'{target}' is already allocated or has been released"), statement.span);
+                if self.allocated.get(target).copied().unwrap_or(false)
+                    || self.released.get(target).copied().unwrap_or(false)
+                {
+                    self.error(
+                        "SEM_INVALID_RESOURCE_ALLOCATION",
+                        format!("'{target}' is already allocated or has been released"),
+                        statement.span,
+                    );
                     return;
                 }
                 self.allocated.insert(target.clone(), true);
-                self.instructions.push(SemanticInstruction::Allocate { target: target.clone() });
+                self.instructions.push(SemanticInstruction::Allocate {
+                    target: target.clone(),
+                });
             }
             StatementKind::Release { target } => {
                 if self.domain == Domain::Classical {
-                    self.error("SEM_RESOURCE_OPERATION_IN_CLASSICAL_DOMAIN", "release is not permitted in a classical block", statement.span);
+                    self.error(
+                        "SEM_RESOURCE_OPERATION_IN_CLASSICAL_DOMAIN",
+                        "release is not permitted in a classical block",
+                        statement.span,
+                    );
                     return;
                 }
                 if self.lookup(target).map(|s| s.info.value_type) != Some(ValueType::Qubit) {
-                    self.error("SEM_UNRESOLVED_QUANTUM_RESOURCE", format!("release target '{target}' is not a declared qubit"), statement.span);
+                    self.error(
+                        "SEM_UNRESOLVED_QUANTUM_RESOURCE",
+                        format!("release target '{target}' is not a declared qubit"),
+                        statement.span,
+                    );
                     return;
                 }
-                if !self.allocated.get(target).copied().unwrap_or(false) || self.released.get(target).copied().unwrap_or(false) {
-                    self.error("SEM_RESOURCE_NOT_ACTIVE", format!("'{target}' must be allocated and live before release"), statement.span);
+                if !self.allocated.get(target).copied().unwrap_or(false)
+                    || self.released.get(target).copied().unwrap_or(false)
+                {
+                    self.error(
+                        "SEM_RESOURCE_NOT_ACTIVE",
+                        format!("'{target}' must be allocated and live before release"),
+                        statement.span,
+                    );
                     return;
                 }
                 let count = self.borrow_counts.get(target).copied().unwrap_or(0);
                 if count != 0 {
-                    self.error("SEM_RESOURCE_HAS_OUTSTANDING_BORROWS", format!("'{target}' has {count} outstanding borrow(s)"), statement.span);
+                    self.error(
+                        "SEM_RESOURCE_HAS_OUTSTANDING_BORROWS",
+                        format!("'{target}' has {count} outstanding borrow(s)"),
+                        statement.span,
+                    );
                     return;
                 }
                 self.released.insert(target.clone(), true);
                 self.allocated.insert(target.clone(), false);
-                self.instructions.push(SemanticInstruction::Release { target: target.clone() });
+                self.instructions.push(SemanticInstruction::Release {
+                    target: target.clone(),
+                });
             }
             StatementKind::Borrow { target, alias } => {
                 if self.domain == Domain::Classical {
-                    self.error("SEM_RESOURCE_OPERATION_IN_CLASSICAL_DOMAIN", "borrow is not permitted in a classical block", statement.span);
+                    self.error(
+                        "SEM_RESOURCE_OPERATION_IN_CLASSICAL_DOMAIN",
+                        "borrow is not permitted in a classical block",
+                        statement.span,
+                    );
                     return;
                 }
                 if self.lookup(target).map(|s| s.info.value_type) != Some(ValueType::Qubit)
                     || !self.allocated.get(target).copied().unwrap_or(false)
-                    || self.released.get(target).copied().unwrap_or(false) {
-                    self.error("SEM_BORROW_REQUIRES_ACTIVE_RESOURCE", format!("'{target}' must be allocated and live before it can be borrowed"), statement.span);
+                    || self.released.get(target).copied().unwrap_or(false)
+                {
+                    self.error(
+                        "SEM_BORROW_REQUIRES_ACTIVE_RESOURCE",
+                        format!("'{target}' must be allocated and live before it can be borrowed"),
+                        statement.span,
+                    );
                     return;
                 }
                 if self.lookup(alias).is_some() || self.borrows.contains_key(alias) {
-                    self.error("SEM_DUPLICATE_BORROW_ALIAS", format!("borrow alias '{alias}' is already in use"), statement.span);
+                    self.error(
+                        "SEM_DUPLICATE_BORROW_ALIAS",
+                        format!("borrow alias '{alias}' is already in use"),
+                        statement.span,
+                    );
                     return;
                 }
                 self.borrows.insert(alias.clone(), target.clone());
+                self.borrow_scope_depth
+                    .insert(alias.clone(), self.scope_depth);
                 *self.borrow_counts.entry(target.clone()).or_insert(0) += 1;
-                self.instructions.push(SemanticInstruction::Borrow { target: target.clone(), alias: alias.clone() });
+                self.instructions.push(SemanticInstruction::Borrow {
+                    target: target.clone(),
+                    alias: alias.clone(),
+                });
             }
             StatementKind::ReturnBorrow { alias } => {
+                let Some(depth) = self.borrow_scope_depth.get(alias).copied() else {
+                    self.error(
+                        "SEM_UNKNOWN_BORROW",
+                        format!("'{alias}' is not an active borrow alias"),
+                        statement.span,
+                    );
+                    return;
+                };
+                if depth != self.scope_depth {
+                    self.error(
+                        "SEM_BORROW_SCOPE_MISMATCH",
+                        format!("borrow alias '{alias}' must be returned in the lexical scope where it was created"),
+                        statement.span,
+                    );
+                    return;
+                }
+                self.borrow_scope_depth.remove(alias);
                 let Some(target) = self.borrows.remove(alias) else {
-                    self.error("SEM_UNKNOWN_BORROW", format!("'{alias}' is not an active borrow alias"), statement.span);
+                    self.error(
+                        "SEM_UNKNOWN_BORROW",
+                        format!("'{alias}' is not an active borrow alias"),
+                        statement.span,
+                    );
                     return;
                 };
                 let count = self.borrow_counts.entry(target).or_insert(0);
                 *count = count.saturating_sub(1);
-                self.instructions.push(SemanticInstruction::ReturnBorrow { alias: alias.clone() });
+                self.instructions.push(SemanticInstruction::ReturnBorrow {
+                    alias: alias.clone(),
+                });
             }
             StatementKind::Measurement { target } => {
                 if self.domain == Domain::Classical {
@@ -239,12 +348,24 @@ impl Analyzer {
                     );
                     return;
                 }
-                if self.lookup(target).map(|symbol| symbol.info.value_type) != Some(ValueType::Qubit) {
-                    self.error("SEM_UNRESOLVED_QUANTUM_RESOURCE", format!("measurement target '{target}' is not a declared qubit"), statement.span);
+                if self.lookup(target).map(|symbol| symbol.info.value_type)
+                    != Some(ValueType::Qubit)
+                {
+                    self.error(
+                        "SEM_UNRESOLVED_QUANTUM_RESOURCE",
+                        format!("measurement target '{target}' is not a declared qubit"),
+                        statement.span,
+                    );
                     return;
                 }
-                if !self.allocated.get(target).copied().unwrap_or(false) || self.released.get(target).copied().unwrap_or(false) {
-                    self.error("SEM_RESOURCE_NOT_ACTIVE", format!("measurement target '{target}' must be allocated and live"), statement.span);
+                if !self.allocated.get(target).copied().unwrap_or(false)
+                    || self.released.get(target).copied().unwrap_or(false)
+                {
+                    self.error(
+                        "SEM_RESOURCE_NOT_ACTIVE",
+                        format!("measurement target '{target}' must be allocated and live"),
+                        statement.span,
+                    );
                     return;
                 }
                 match self.lookup(target).map(|symbol| symbol.info.value_type) {
@@ -253,9 +374,11 @@ impl Analyzer {
                         format!("measurement target '{target}' has not been declared"),
                         statement.span,
                     ),
-                    Some(ValueType::Qubit) => self.instructions.push(
-                        SemanticInstruction::Measure { target: target.clone() },
-                    ),
+                    Some(ValueType::Qubit) => {
+                        self.instructions.push(SemanticInstruction::Measure {
+                            target: target.clone(),
+                        })
+                    }
                     Some(_) => self.error(
                         "SEM_MEASUREMENT_TARGET_NOT_QUBIT",
                         format!("'{target}' is not a quantum resource"),
@@ -274,18 +397,15 @@ impl Analyzer {
                 }
 
                 let (value_type, bound_value) = match value {
-                    Expression::Number(number) => (
-                        ValueType::Number,
-                        BoundValue::NumberLiteral(number.clone()),
-                    ),
-                    Expression::String(string) => (
-                        ValueType::String,
-                        BoundValue::StringLiteral(string.clone()),
-                    ),
-                    Expression::Boolean(value) => (
-                        ValueType::Boolean,
-                        BoundValue::BooleanLiteral(*value),
-                    ),
+                    Expression::Number(number) => {
+                        (ValueType::Number, BoundValue::NumberLiteral(number.clone()))
+                    }
+                    Expression::String(string) => {
+                        (ValueType::String, BoundValue::StringLiteral(string.clone()))
+                    }
+                    Expression::Boolean(value) => {
+                        (ValueType::Boolean, BoundValue::BooleanLiteral(*value))
+                    }
                     Expression::Identifier(reference) => {
                         match self.lookup(reference).map(|symbol| symbol.info.value_type) {
                             None => {
@@ -304,10 +424,9 @@ impl Analyzer {
                                 );
                                 return;
                             }
-                            Some(value_type) => (
-                                value_type,
-                                BoundValue::Reference(reference.clone()),
-                            ),
+                            Some(value_type) => {
+                                (value_type, BoundValue::Reference(reference.clone()))
+                            }
                         }
                     }
                 };
@@ -329,7 +448,7 @@ impl Analyzer {
                     );
                     return;
                 }
-                self.analyze_block(Domain::Quantum, statements);
+                self.analyze_block(Domain::Quantum, statements, statement.span);
             }
             StatementKind::ClassicalBlock { statements } => {
                 if self.domain == Domain::Quantum {
@@ -340,19 +459,44 @@ impl Analyzer {
                     );
                     return;
                 }
-                self.analyze_block(Domain::Classical, statements);
+                self.analyze_block(Domain::Classical, statements, statement.span);
             }
         }
     }
 
-    fn analyze_block(&mut self, next_domain: Domain, statements: &[Statement]) {
+    fn analyze_block(&mut self, next_domain: Domain, statements: &[Statement], block_span: Span) {
         let previous = self.domain;
         self.scopes.push(HashMap::new());
+        self.scope_depth += 1;
         self.domain = next_domain;
-        self.instructions.push(SemanticInstruction::EnterDomain(next_domain));
+        self.instructions
+            .push(SemanticInstruction::EnterDomain(next_domain));
         self.analyze_statements(statements);
-        self.instructions.push(SemanticInstruction::ExitDomain(next_domain));
+
+        // A borrow is lexically scoped to the block where it was created.
+        // Do not allow it to escape or be returned from an outer/inner scope.
+        let unreturned: Vec<String> = self
+            .borrow_scope_depth
+            .iter()
+            .filter_map(|(alias, depth)| (*depth == self.scope_depth).then_some(alias.clone()))
+            .collect();
+        for alias in unreturned {
+            self.error(
+                "SEM_BORROW_NOT_RETURNED",
+                format!("borrow alias '{alias}' must be returned before its lexical scope ends"),
+                block_span,
+            );
+            self.borrow_scope_depth.remove(&alias);
+            if let Some(target) = self.borrows.remove(&alias) {
+                let count = self.borrow_counts.entry(target).or_insert(0);
+                *count = count.saturating_sub(1);
+            }
+        }
+
+        self.instructions
+            .push(SemanticInstruction::ExitDomain(next_domain));
         self.domain = previous;
+        self.scope_depth -= 1;
         self.scopes.pop();
     }
 }
@@ -367,7 +511,16 @@ pub fn analyze(program: &Program) -> Result<SemanticModule, Vec<SemanticError>> 
 
     if !analyzer.borrows.is_empty() {
         for alias in analyzer.borrows.keys() {
-            analyzer.errors.push(SemanticError { code: "SEM_BORROW_NOT_RETURNED", message: format!("borrow alias '{alias}' was not returned"), span: program.statements.last().map(|s| s.span).unwrap_or(Span { start: 0, end: 0, line: 1, column: 1 }) });
+            analyzer.errors.push(SemanticError {
+                code: "SEM_BORROW_NOT_RETURNED",
+                message: format!("borrow alias '{alias}' was not returned"),
+                span: program.statements.last().map(|s| s.span).unwrap_or(Span {
+                    start: 0,
+                    end: 0,
+                    line: 1,
+                    column: 1,
+                }),
+            });
         }
     }
 
@@ -475,15 +628,22 @@ mod tests {
 
     #[test]
     fn rejects_duplicate_allocation_and_use_after_release() {
-        assert!(error_codes("qbit q0; allocate q0; allocate q0;").contains(&"SEM_INVALID_RESOURCE_ALLOCATION"));
-        assert!(error_codes("qbit q0; allocate q0; release q0; measure q0;").contains(&"SEM_RESOURCE_NOT_ACTIVE"));
+        assert!(error_codes("qbit q0; allocate q0; allocate q0;")
+            .contains(&"SEM_INVALID_RESOURCE_ALLOCATION"));
+        assert!(error_codes("qbit q0; allocate q0; release q0; measure q0;")
+            .contains(&"SEM_RESOURCE_NOT_ACTIVE"));
     }
 
     #[test]
     fn borrow_must_be_returned_before_release() {
-        assert!(error_codes("qbit q0; allocate q0; borrow q0 as view; release q0; return view;")
-            .contains(&"SEM_RESOURCE_HAS_OUTSTANDING_BORROWS"));
-        assert!(analyze_source("qbit q0; allocate q0; borrow q0 as view; return view; release q0;").is_ok());
+        assert!(
+            error_codes("qbit q0; allocate q0; borrow q0 as view; release q0; return view;")
+                .contains(&"SEM_RESOURCE_HAS_OUTSTANDING_BORROWS")
+        );
+        assert!(analyze_source(
+            "qbit q0; allocate q0; borrow q0 as view; return view; release q0;"
+        )
+        .is_ok());
     }
 
     #[test]
@@ -497,5 +657,29 @@ mod tests {
     fn classical_references_are_allowed_but_qubit_references_are_not() {
         assert!(analyze_source("let first := 4; let second := first;").is_ok());
         assert!(analyze_source("qbit q0; let second := q0;").is_err());
+    }
+
+    #[test]
+    fn borrow_must_be_returned_inside_its_lexical_block() {
+        assert!(
+            error_codes("qbit q0; allocate q0; quantum { borrow q0 as view; }")
+                .contains(&"SEM_BORROW_NOT_RETURNED")
+        );
+    }
+
+    #[test]
+    fn borrow_cannot_be_returned_from_a_different_scope() {
+        let codes =
+            error_codes("qbit q0; allocate q0; borrow q0 as view; quantum { return view; }");
+        assert!(codes.contains(&"SEM_BORROW_SCOPE_MISMATCH"));
+        assert!(codes.contains(&"SEM_BORROW_NOT_RETURNED"));
+    }
+
+    #[test]
+    fn borrow_created_and_returned_in_same_block_is_valid() {
+        assert!(analyze_source(
+            "qbit q0; allocate q0; quantum { borrow q0 as view; return view; }"
+        )
+        .is_ok());
     }
 }

@@ -35,7 +35,8 @@ pub fn parse_source(source: &str) -> Result<ast::Program, String> {
 pub fn validate_source(source: &str) -> Result<semantic::SemanticModule, String> {
     let program = parse_source(source)?;
     semantic::analyze(&program).map_err(|errors| {
-        errors.into_iter()
+        errors
+            .into_iter()
             .map(|error| error.to_string())
             .collect::<Vec<_>>()
             .join("\n")
@@ -77,11 +78,11 @@ pub fn compile_to_ir(
 ) -> Result<semantic_ir::SemanticIrModule, String> {
     let program = parse_source(source)?;
     let validated = semantic::analyze(&program).map_err(|errors| {
-        errors.into_iter()
+        errors
+            .into_iter()
             .map(|error| error.to_string())
             .collect::<Vec<_>>()
             .join("\\n")
     })?;
-    semantic_ir::lower(&program, &validated, source_name)
-        .map_err(|error| error.to_string())
+    semantic_ir::lower(&program, &validated, source_name).map_err(|error| error.to_string())
 }

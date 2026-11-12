@@ -76,7 +76,11 @@ pub enum ResourceError {
     ReleaseRequiresOwned(String),
     ReleaseRequiresSeparable(String),
     ReleaseRequiresCleanAncilla(String),
-    InvalidTransition { name: String, from: Lifecycle, action: &'static str },
+    InvalidTransition {
+        name: String,
+        from: Lifecycle,
+        action: &'static str,
+    },
     CleanlinessProofRequired(String),
     DirtyAncillaRestorationProofRequired(String),
 }
@@ -103,11 +107,15 @@ pub struct ResourceLedger {
 }
 
 impl ResourceLedger {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-    pub fn allocate(&mut self, name: impl Into<String>, kind: ResourceKind)
-        -> Result<ResourceHandle, ResourceError>
-    {
+    pub fn allocate(
+        &mut self,
+        name: impl Into<String>,
+        kind: ResourceKind,
+    ) -> Result<ResourceHandle, ResourceError> {
         let name = name.into();
         if self.by_name.contains_key(&name) {
             return Err(ResourceError::DuplicateName(name));
@@ -134,18 +142,24 @@ impl ResourceLedger {
     }
 
     pub fn state(&self, handle: ResourceHandle) -> Result<&ResourceState, ResourceError> {
-        self.resources.get(&handle).ok_or(ResourceError::UnknownResource(handle))
+        self.resources
+            .get(&handle)
+            .ok_or(ResourceError::UnknownResource(handle))
     }
 
     fn state_mut(&mut self, handle: ResourceHandle) -> Result<&mut ResourceState, ResourceError> {
-        self.resources.get_mut(&handle).ok_or(ResourceError::UnknownResource(handle))
+        self.resources
+            .get_mut(&handle)
+            .ok_or(ResourceError::UnknownResource(handle))
     }
 
     pub fn mark_active(&mut self, handle: ResourceHandle) -> Result<(), ResourceError> {
         let state = self.state_mut(handle)?;
         if state.lifecycle != Lifecycle::Allocated {
             return Err(ResourceError::InvalidTransition {
-                name: state.name.clone(), from: state.lifecycle, action: "mark_active",
+                name: state.name.clone(),
+                from: state.lifecycle,
+                action: "mark_active",
             });
         }
         state.lifecycle = Lifecycle::Active;
@@ -154,7 +168,9 @@ impl ResourceLedger {
 
     /// Mark conservative entanglement knowledge. Unknown is not separable.
     pub fn set_entanglement(
-        &mut self, handle: ResourceHandle, status: Entanglement,
+        &mut self,
+        handle: ResourceHandle,
+        status: Entanglement,
     ) -> Result<(), ResourceError> {
         self.state_mut(handle)?.entanglement = status;
         Ok(())
@@ -163,7 +179,9 @@ impl ResourceLedger {
     /// Record a proof result from static analysis or a backend-specific
     /// verification procedure. This method does not itself prove cleanliness.
     pub fn attest_cleanliness(
-        &mut self, handle: ResourceHandle, verified: bool,
+        &mut self,
+        handle: ResourceHandle,
+        verified: bool,
     ) -> Result<(), ResourceError> {
         let state = self.state_mut(handle)?;
         if !matches!(state.kind, ResourceKind::CleanAncilla) {
@@ -194,14 +212,20 @@ impl ResourceLedger {
         state.active_borrows += 1;
         let borrow = BorrowHandle(self.next_borrow);
         self.next_borrow += 1;
-        self.borrows.insert(borrow, BorrowRecord { resource: handle });
+        self.borrows
+            .insert(borrow, BorrowRecord { resource: handle });
         Ok(borrow)
     }
 
     pub fn return_borrow(&mut self, borrow: BorrowHandle) -> Result<(), ResourceError> {
-        let record = self.borrows.remove(&borrow).ok_or(ResourceError::UnknownBorrow(borrow))?;
+        let record = self
+            .borrows
+            .remove(&borrow)
+            .ok_or(ResourceError::UnknownBorrow(borrow))?;
         let state = self.state_mut(record.resource)?;
-        state.active_borrows = state.active_borrows.checked_sub(1)
+        state.active_borrows = state
+            .active_borrows
+            .checked_sub(1)
             .expect("borrow ledger and resource count must remain consistent");
         Ok(())
     }
@@ -209,14 +233,20 @@ impl ResourceLedger {
     /// Dirty ancilla must be proven restored to its arbitrary borrowed input
     /// state and correlations before it can be released.
     pub fn attest_dirty_restored(
-        &mut self, handle: ResourceHandle, verified: bool,
+        &mut self,
+        handle: ResourceHandle,
+        verified: bool,
     ) -> Result<(), ResourceError> {
         let state = self.state_mut(handle)?;
         if state.kind != ResourceKind::DirtyAncilla {
-            return Err(ResourceError::DirtyAncillaRestorationProofRequired(state.name.clone()));
+            return Err(ResourceError::DirtyAncillaRestorationProofRequired(
+                state.name.clone(),
+            ));
         }
         if !verified {
-            return Err(ResourceError::DirtyAncillaRestorationProofRequired(state.name.clone()));
+            return Err(ResourceError::DirtyAncillaRestorationProofRequired(
+                state.name.clone(),
+            ));
         }
         state.cleanliness = Cleanliness::VerifiedRestored;
         state.lifecycle = Lifecycle::Uncomputed;
@@ -238,10 +268,14 @@ impl ResourceLedger {
             return Err(ResourceError::ReleaseRequiresSeparable(state.name));
         }
         match state.kind {
-            ResourceKind::CleanAncilla if state.cleanliness != Cleanliness::VerifiedClean =>
-                return Err(ResourceError::ReleaseRequiresCleanAncilla(state.name)),
-            ResourceKind::DirtyAncilla if state.cleanliness != Cleanliness::VerifiedRestored =>
-                return Err(ResourceError::DirtyAncillaRestorationProofRequired(state.name)),
+            ResourceKind::CleanAncilla if state.cleanliness != Cleanliness::VerifiedClean => {
+                return Err(ResourceError::ReleaseRequiresCleanAncilla(state.name))
+            }
+            ResourceKind::DirtyAncilla if state.cleanliness != Cleanliness::VerifiedRestored => {
+                return Err(ResourceError::DirtyAncillaRestorationProofRequired(
+                    state.name,
+                ))
+            }
             _ => {}
         }
         let released_name = {
@@ -259,7 +293,9 @@ mod tests {
     use super::*;
 
     fn separable(ledger: &mut ResourceLedger, handle: ResourceHandle) {
-        ledger.set_entanglement(handle, Entanglement::KnownSeparable).unwrap();
+        ledger
+            .set_entanglement(handle, Entanglement::KnownSeparable)
+            .unwrap();
     }
 
     #[test]
@@ -276,7 +312,10 @@ mod tests {
     fn rejects_duplicate_live_names() {
         let mut ledger = ResourceLedger::new();
         ledger.allocate("q0", ResourceKind::Qubit).unwrap();
-        assert_eq!(ledger.allocate("q0", ResourceKind::Qubit), Err(ResourceError::DuplicateName("q0".into())));
+        assert_eq!(
+            ledger.allocate("q0", ResourceKind::Qubit),
+            Err(ResourceError::DuplicateName("q0".into()))
+        );
     }
 
     #[test]
@@ -285,7 +324,10 @@ mod tests {
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         separable(&mut ledger, q);
         let borrow = ledger.borrow(q).unwrap();
-        assert_eq!(ledger.release(q), Err(ResourceError::OutstandingBorrows("q0".into())));
+        assert_eq!(
+            ledger.release(q),
+            Err(ResourceError::OutstandingBorrows("q0".into()))
+        );
         ledger.return_borrow(borrow).unwrap();
         ledger.release(q).unwrap();
     }
@@ -296,16 +338,27 @@ mod tests {
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         let borrow = ledger.borrow(q).unwrap();
         ledger.return_borrow(borrow).unwrap();
-        assert_eq!(ledger.return_borrow(borrow), Err(ResourceError::UnknownBorrow(borrow)));
+        assert_eq!(
+            ledger.return_borrow(borrow),
+            Err(ResourceError::UnknownBorrow(borrow))
+        );
     }
 
     #[test]
     fn rejects_release_when_entanglement_is_unknown_or_possible() {
         let mut ledger = ResourceLedger::new();
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
-        assert_eq!(ledger.release(q), Err(ResourceError::ReleaseRequiresSeparable("q0".into())));
-        ledger.set_entanglement(q, Entanglement::PossiblyEntangled).unwrap();
-        assert_eq!(ledger.release(q), Err(ResourceError::ReleaseRequiresSeparable("q0".into())));
+        assert_eq!(
+            ledger.release(q),
+            Err(ResourceError::ReleaseRequiresSeparable("q0".into()))
+        );
+        ledger
+            .set_entanglement(q, Entanglement::PossiblyEntangled)
+            .unwrap();
+        assert_eq!(
+            ledger.release(q),
+            Err(ResourceError::ReleaseRequiresSeparable("q0".into()))
+        );
     }
 
     #[test]
@@ -313,7 +366,10 @@ mod tests {
         let mut ledger = ResourceLedger::new();
         let a = ledger.allocate("work", ResourceKind::CleanAncilla).unwrap();
         separable(&mut ledger, a);
-        assert_eq!(ledger.release(a), Err(ResourceError::ReleaseRequiresCleanAncilla("work".into())));
+        assert_eq!(
+            ledger.release(a),
+            Err(ResourceError::ReleaseRequiresCleanAncilla("work".into()))
+        );
         ledger.attest_cleanliness(a, true).unwrap();
         ledger.release(a).unwrap();
     }
@@ -321,9 +377,16 @@ mod tests {
     #[test]
     fn dirty_ancilla_requires_restoration_attestation() {
         let mut ledger = ResourceLedger::new();
-        let a = ledger.allocate("scratch", ResourceKind::DirtyAncilla).unwrap();
+        let a = ledger
+            .allocate("scratch", ResourceKind::DirtyAncilla)
+            .unwrap();
         separable(&mut ledger, a);
-        assert_eq!(ledger.release(a), Err(ResourceError::DirtyAncillaRestorationProofRequired("scratch".into())));
+        assert_eq!(
+            ledger.release(a),
+            Err(ResourceError::DirtyAncillaRestorationProofRequired(
+                "scratch".into()
+            ))
+        );
         ledger.attest_dirty_restored(a, true).unwrap();
         ledger.release(a).unwrap();
     }
@@ -332,8 +395,13 @@ mod tests {
     fn cannot_release_entangled_clean_ancilla_even_with_clean_attestation() {
         let mut ledger = ResourceLedger::new();
         let a = ledger.allocate("work", ResourceKind::CleanAncilla).unwrap();
-        ledger.set_entanglement(a, Entanglement::KnownEntangled).unwrap();
-        assert_eq!(ledger.attest_cleanliness(a, true), Err(ResourceError::ReleaseRequiresSeparable("work".into())));
+        ledger
+            .set_entanglement(a, Entanglement::KnownEntangled)
+            .unwrap();
+        assert_eq!(
+            ledger.attest_cleanliness(a, true),
+            Err(ResourceError::ReleaseRequiresSeparable("work".into()))
+        );
     }
 
     #[test]
@@ -342,9 +410,17 @@ mod tests {
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         separable(&mut ledger, q);
         ledger.release(q).unwrap();
-        assert_eq!(ledger.mark_active(q), Err(ResourceError::InvalidTransition {
-            name: "q0".into(), from: Lifecycle::Released, action: "mark_active",
-        }));
-        assert_eq!(ledger.release(q), Err(ResourceError::AlreadyReleased("q0".into())));
+        assert_eq!(
+            ledger.mark_active(q),
+            Err(ResourceError::InvalidTransition {
+                name: "q0".into(),
+                from: Lifecycle::Released,
+                action: "mark_active",
+            })
+        );
+        assert_eq!(
+            ledger.release(q),
+            Err(ResourceError::AlreadyReleased("q0".into()))
+        );
     }
 }

@@ -148,3 +148,14 @@ Implemented in `src/semantic_ir.rs`:
 - Tests assert deterministic encoding, provenance independence, and changed bytes when a literal changes.
 
 This is the canonical-encoding foundation only. It does **not** yet compute a cryptographic digest. A reviewed SHA-256 implementation/dependency and lockfile update are required before this encoding can replace caller-supplied module fingerprints in proof claims and ledger release. Do not use a non-cryptographic standard-library hasher as a substitute.
+
+
+## QCM-10 phase 2: SHA-256 module fingerprints
+
+The semantic IR now exposes `fingerprint()` and `fingerprint_hex()`. The digest is SHA-256 over the versioned canonical byte encoding, using the RustCrypto `sha2` crate (0.10.9). Resource release now accepts the semantic module itself and computes its fingerprint internally; callers can no longer pass an arbitrary fingerprint to the release API.
+
+Proof claims still carry the 32-byte digest so the configured verifier can bind its evidence to the same module identity. Release recomputes the digest from the supplied module and compares it to the opaque receipt.
+
+Tests cover deterministic digest generation, provenance independence, semantic-content sensitivity, and rejection of a receipt when a different semantic module is supplied.
+
+The dependency lockfile must be regenerated and committed before this phase is complete. The existing CI workflow runs `cargo test --locked`, so a stale lockfile is intentionally not accepted.

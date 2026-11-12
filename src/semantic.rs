@@ -537,4 +537,28 @@ mod tests {
         assert!(analyze_source("let first := 4; let second := first;").is_ok());
         assert!(analyze_source("qbit q0; let second := q0;").is_err());
     }
+
+    #[test]
+    fn borrow_must_be_returned_inside_its_lexical_block() {
+        assert!(error_codes(
+            "qbit q0; allocate q0; quantum { borrow q0 as view; }"
+        ).contains(&"SEM_BORROW_NOT_RETURNED"));
+    }
+
+    #[test]
+    fn borrow_cannot_be_returned_from_a_different_scope() {
+        let codes = error_codes(
+            "qbit q0; allocate q0; borrow q0 as view; quantum { return view; }"
+        );
+        assert!(codes.contains(&"SEM_BORROW_SCOPE_MISMATCH"));
+        assert!(codes.contains(&"SEM_BORROW_NOT_RETURNED"));
+    }
+
+    #[test]
+    fn borrow_created_and_returned_in_same_block_is_valid() {
+        assert!(analyze_source(
+            "qbit q0; allocate q0; quantum { borrow q0 as view; return view; }"
+        ).is_ok());
+    }
+
 }

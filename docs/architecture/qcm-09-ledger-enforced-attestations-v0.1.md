@@ -135,3 +135,16 @@ Known limitations remain:
 - The generation counter is in-memory. Durable storage must persist and restore the ledger identity, counter, resources and release state atomically to resist restart/replay.
 - The configured verifier is a trust boundary; the receipt proves only that it returned Verified for the bound claim.
 - No `discard` operation is introduced.
+
+
+## QCM-10 foundation: canonical semantic IR encoding (2026-11-11)
+
+Implemented in `src/semantic_ir.rs`:
+- `SemanticIrModule::canonical_bytes()` emits an explicit, versioned binary encoding with a domain-separation prefix.
+- Integer fields use fixed-width big-endian encoding; strings use UTF-8 with 64-bit byte-length prefixes.
+- Enum variants have explicit stable numeric tags.
+- Ordered declaration, operation, effect and proof-obligation sequences are preserved.
+- Source paths and source spans are excluded from semantic identity; they remain provenance metadata.
+- Tests assert deterministic encoding, provenance independence, and changed bytes when a literal changes.
+
+This is the canonical-encoding foundation only. It does **not** yet compute a cryptographic digest. A reviewed SHA-256 implementation/dependency and lockfile update are required before this encoding can replace caller-supplied module fingerprints in proof claims and ledger release. Do not use a non-cryptographic standard-library hasher as a substitute.

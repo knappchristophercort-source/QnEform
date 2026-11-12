@@ -7,7 +7,10 @@
 
 use std::collections::HashMap;
 
-use crate::proof::{ProofKind, VerifiedAttestation};
+use crate::{
+    proof::{ProofKind, VerifiedAttestation},
+    semantic_ir::SemanticIrModule,
+};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_EPHEMERAL_LEDGER_ID: AtomicU64 = AtomicU64::new(1);
@@ -254,7 +257,7 @@ impl ResourceLedger {
     pub fn release(
         &mut self,
         handle: ResourceHandle,
-        module_fingerprint: &[u8; 32],
+        module: &SemanticIrModule,
         attestation: &VerifiedAttestation,
     ) -> Result<(), ResourceError> {
         let state = self.state(handle)?.clone();
@@ -276,7 +279,7 @@ impl ResourceLedger {
             ResourceKind::DirtyAncilla => ProofKind::DirtyRestoredAndSeparable,
         };
         if !attestation.matches(
-            module_fingerprint,
+            &module.fingerprint(),
             self.ledger_id,
             handle,
             state.kind,
@@ -300,7 +303,7 @@ mod tests {
     use super::*;
     use crate::proof::{ProofClaim, ProofVerifier, VerificationDecision, ATTESTATION_SCHEMA_V1};
 
-    const MODULE: [u8; 32] = [7; 32];
+    fn module() -> SemanticIrModule {\n        crate::compile_to_ir("qbit q0; allocate q0; measure q0;", Some("test.qn")).unwrap()\n    }
 
     struct TestVerifier;
     impl ProofVerifier for TestVerifier {
@@ -322,7 +325,7 @@ mod tests {
         VerifiedAttestation::verify(
             ProofClaim {
                 schema: ATTESTATION_SCHEMA_V1.to_owned(),
-                module_fingerprint: MODULE,
+                module_fingerprint: module().fingerprint(),
                 ledger_id: ledger.ledger_id(),
                 resource: handle,
                 resource_kind: state.kind,
@@ -388,10 +391,10 @@ mod tests {
         let q2 = second.allocate("q0", ResourceKind::Qubit).unwrap();
         separable(&mut second, q2);
         assert_eq!(
-            second.release(q2, &MODULE, &proof),
+            second.release(q2, &module(), &proof),
             Err(ResourceError::MissingOrMismatchedAttestation)
         );
-        first.release(q, &MODULE, &proof).unwrap();
+        first.release(q, &module(), &proof).unwrap();
     }
 
     #[test]
@@ -414,11 +417,11 @@ mod tests {
         let proof = receipt(&ledger, q);
         let borrow = ledger.borrow(q).unwrap();
         assert_eq!(
-            ledger.release(q, &MODULE, &proof),
+            ledger.release(q, &module(), &proof),
             Err(ResourceError::OutstandingBorrows("q0".into()))
         );
         ledger.return_borrow(borrow).unwrap();
-        ledger.release(q, &MODULE, &proof).unwrap();
+        ledger.release(q, &module(), &proof).unwrap();
     }
 
     #[test]
@@ -439,14 +442,14 @@ mod tests {
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         let proof = receipt(&ledger, q);
         assert_eq!(
-            ledger.release(q, &MODULE, &proof),
+            ledger.release(q, &module(), &proof),
             Err(ResourceError::ReleaseRequiresSeparable("q0".into()))
         );
         ledger
             .set_entanglement(q, Entanglement::PossiblyEntangled)
             .unwrap();
         assert_eq!(
-            ledger.release(q, &MODULE, &proof),
+            ledger.release(q, &module(), &proof),
             Err(ResourceError::ReleaseRequiresSeparable("q0".into()))
         );
     }
@@ -457,7 +460,7 @@ mod tests {
         let a = ledger.allocate("work", ResourceKind::CleanAncilla).unwrap();
         separable(&mut ledger, a);
         let proof = receipt(&ledger, a);
-        ledger.release(a, &MODULE, &proof).unwrap();
+        ledger.release(a, &module(), &proof).unwrap();
     }
 
     #[test]
@@ -468,7 +471,7 @@ mod tests {
             .unwrap();
         separable(&mut ledger, a);
         let proof = receipt(&ledger, a);
-        ledger.release(a, &MODULE, &proof).unwrap();
+        ledger.release(a, &module(), &proof).unwrap();
     }
 
     #[test]
@@ -478,7 +481,7 @@ mod tests {
         separable(&mut ledger, q);
         let mut claim = ProofClaim {
             schema: ATTESTATION_SCHEMA_V1.to_owned(),
-            module_fingerprint: MODULE,
+            module_fingerprint: module().fingerprint(),
             ledger_id: ledger.ledger_id(),
             resource: q,
             resource_kind: ResourceKind::Qubit,
@@ -491,7 +494,7 @@ mod tests {
         assert!(VerifiedAttestation::verify(claim.clone(), &TestVerifier).is_err());
         claim.proof_kind = ProofKind::Separable;
         let proof = VerifiedAttestation::verify(claim, &TestVerifier).unwrap();
-        ledger.release(q, &MODULE, &proof).unwrap();
+        ledger.release(q, &module(), &proof).unwrap();
     }
 
     #[test]
@@ -500,7 +503,7 @@ mod tests {
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         separable(&mut ledger, q);
         let proof = receipt(&ledger, q);
-        ledger.release(q, &MODULE, &proof).unwrap();
+        ledger.release(q, &module(), &proof).unwrap();
         assert_eq!(
             ledger.mark_active(q),
             Err(ResourceError::InvalidTransition {
@@ -510,7 +513,7 @@ mod tests {
             })
         );
         assert_eq!(
-            ledger.release(q, &MODULE, &proof),
+            ledger.release(q, &module(), &proof),
             Err(ResourceError::AlreadyReleased("q0".into()))
         );
     }

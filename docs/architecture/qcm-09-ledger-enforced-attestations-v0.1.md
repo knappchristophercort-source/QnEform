@@ -147,7 +147,7 @@ Implemented in `src/semantic_ir.rs`:
 - Source paths and source spans are excluded from semantic identity; they remain provenance metadata.
 - Tests assert deterministic encoding, provenance independence, and changed bytes when a literal changes.
 
-This is the canonical-encoding foundation only. It does **not** yet compute a cryptographic digest. A reviewed SHA-256 implementation/dependency and lockfile update are required before this encoding can replace caller-supplied module fingerprints in proof claims and ledger release. Do not use a non-cryptographic standard-library hasher as a substitute.
+The initial encoding-only limitation was addressed in QCM-10 phase 2 below: the module now exposes SHA-256 fingerprints using the RustCrypto `sha2` crate, and the release API recomputes the fingerprint from the supplied semantic module. The dependency is pinned in `Cargo.lock`.
 
 
 ## QCM-10 phase 2: SHA-256 module fingerprints

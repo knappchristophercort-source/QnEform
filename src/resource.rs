@@ -317,21 +317,27 @@ mod tests {
             ResourceKind::CleanAncilla => ProofKind::CleanAndSeparable,
             ResourceKind::DirtyAncilla => ProofKind::DirtyRestoredAndSeparable,
         };
-        VerifiedAttestation::verify(ProofClaim {
-            schema: ATTESTATION_SCHEMA_V1.to_owned(),
-            module_fingerprint: MODULE,
-            ledger_id: ledger.ledger_id(),
-            resource: handle,
-            resource_kind: state.kind,
-            resource_generation: state.generation,
-            proof_kind,
-            evidence_digest: [9; 32],
-            verifier_id: "resource-ledger-test/1".to_owned(),
-        }, &TestVerifier).unwrap()
+        VerifiedAttestation::verify(
+            ProofClaim {
+                schema: ATTESTATION_SCHEMA_V1.to_owned(),
+                module_fingerprint: MODULE,
+                ledger_id: ledger.ledger_id(),
+                resource: handle,
+                resource_kind: state.kind,
+                resource_generation: state.generation,
+                proof_kind,
+                evidence_digest: [9; 32],
+                verifier_id: "resource-ledger-test/1".to_owned(),
+            },
+            &TestVerifier,
+        )
+        .unwrap()
     }
 
     fn separable(ledger: &mut ResourceLedger, handle: ResourceHandle) {
-        ledger.set_entanglement(handle, Entanglement::KnownSeparable).unwrap();
+        ledger
+            .set_entanglement(handle, Entanglement::KnownSeparable)
+            .unwrap();
     }
 
     #[test]
@@ -343,7 +349,10 @@ mod tests {
 
     #[test]
     fn ephemeral_ledgers_receive_distinct_process_local_identities() {
-        assert_ne!(ResourceLedger::new().ledger_id(), ResourceLedger::new().ledger_id());
+        assert_ne!(
+            ResourceLedger::new().ledger_id(),
+            ResourceLedger::new().ledger_id()
+        );
     }
 
     #[test]
@@ -361,7 +370,10 @@ mod tests {
     fn rejects_duplicate_live_names() {
         let mut ledger = ResourceLedger::new();
         ledger.allocate("q0", ResourceKind::Qubit).unwrap();
-        assert_eq!(ledger.allocate("q0", ResourceKind::Qubit), Err(ResourceError::DuplicateName("q0".into())));
+        assert_eq!(
+            ledger.allocate("q0", ResourceKind::Qubit),
+            Err(ResourceError::DuplicateName("q0".into()))
+        );
     }
 
     #[test]
@@ -373,7 +385,10 @@ mod tests {
         let mut second = ResourceLedger::new();
         let q2 = second.allocate("q0", ResourceKind::Qubit).unwrap();
         separable(&mut second, q2);
-        assert_eq!(second.release(q2, &MODULE, &proof), Err(ResourceError::MissingOrMismatchedAttestation));
+        assert_eq!(
+            second.release(q2, &MODULE, &proof),
+            Err(ResourceError::MissingOrMismatchedAttestation)
+        );
         first.release(q, &MODULE, &proof).unwrap();
     }
 
@@ -383,7 +398,10 @@ mod tests {
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         separable(&mut ledger, q);
         let proof = receipt(&ledger, q);
-        assert_eq!(ledger.release(q, &[8; 32], &proof), Err(ResourceError::MissingOrMismatchedAttestation));
+        assert_eq!(
+            ledger.release(q, &[8; 32], &proof),
+            Err(ResourceError::MissingOrMismatchedAttestation)
+        );
     }
 
     #[test]
@@ -393,7 +411,10 @@ mod tests {
         separable(&mut ledger, q);
         let proof = receipt(&ledger, q);
         let borrow = ledger.borrow(q).unwrap();
-        assert_eq!(ledger.release(q, &MODULE, &proof), Err(ResourceError::OutstandingBorrows("q0".into())));
+        assert_eq!(
+            ledger.release(q, &MODULE, &proof),
+            Err(ResourceError::OutstandingBorrows("q0".into()))
+        );
         ledger.return_borrow(borrow).unwrap();
         ledger.release(q, &MODULE, &proof).unwrap();
     }
@@ -404,7 +425,10 @@ mod tests {
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         let borrow = ledger.borrow(q).unwrap();
         ledger.return_borrow(borrow).unwrap();
-        assert_eq!(ledger.return_borrow(borrow), Err(ResourceError::UnknownBorrow(borrow)));
+        assert_eq!(
+            ledger.return_borrow(borrow),
+            Err(ResourceError::UnknownBorrow(borrow))
+        );
     }
 
     #[test]
@@ -412,9 +436,17 @@ mod tests {
         let mut ledger = ResourceLedger::new();
         let q = ledger.allocate("q0", ResourceKind::Qubit).unwrap();
         let proof = receipt(&ledger, q);
-        assert_eq!(ledger.release(q, &MODULE, &proof), Err(ResourceError::ReleaseRequiresSeparable("q0".into())));
-        ledger.set_entanglement(q, Entanglement::PossiblyEntangled).unwrap();
-        assert_eq!(ledger.release(q, &MODULE, &proof), Err(ResourceError::ReleaseRequiresSeparable("q0".into())));
+        assert_eq!(
+            ledger.release(q, &MODULE, &proof),
+            Err(ResourceError::ReleaseRequiresSeparable("q0".into()))
+        );
+        ledger
+            .set_entanglement(q, Entanglement::PossiblyEntangled)
+            .unwrap();
+        assert_eq!(
+            ledger.release(q, &MODULE, &proof),
+            Err(ResourceError::ReleaseRequiresSeparable("q0".into()))
+        );
     }
 
     #[test]
@@ -429,7 +461,9 @@ mod tests {
     #[test]
     fn dirty_ancilla_requires_restored_and_separable_receipt() {
         let mut ledger = ResourceLedger::new();
-        let a = ledger.allocate("scratch", ResourceKind::DirtyAncilla).unwrap();
+        let a = ledger
+            .allocate("scratch", ResourceKind::DirtyAncilla)
+            .unwrap();
         separable(&mut ledger, a);
         let proof = receipt(&ledger, a);
         ledger.release(a, &MODULE, &proof).unwrap();
@@ -465,9 +499,17 @@ mod tests {
         separable(&mut ledger, q);
         let proof = receipt(&ledger, q);
         ledger.release(q, &MODULE, &proof).unwrap();
-        assert_eq!(ledger.mark_active(q), Err(ResourceError::InvalidTransition {
-            name: "q0".into(), from: Lifecycle::Released, action: "mark_active",
-        }));
-        assert_eq!(ledger.release(q, &MODULE, &proof), Err(ResourceError::AlreadyReleased("q0".into())));
+        assert_eq!(
+            ledger.mark_active(q),
+            Err(ResourceError::InvalidTransition {
+                name: "q0".into(),
+                from: Lifecycle::Released,
+                action: "mark_active",
+            })
+        );
+        assert_eq!(
+            ledger.release(q, &MODULE, &proof),
+            Err(ResourceError::AlreadyReleased("q0".into()))
+        );
     }
 }

@@ -29,3 +29,20 @@ jobs:
         run: cargo test --locked
       - name: Check formatting
         run: cargo fmt --all -- --check
+
+  resolve-lockfile:
+    if: startsWith(github.ref, 'refs/heads/qcm09/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Generate dependency lockfile
+        run: cargo generate-lockfile
+      - name: Upload generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: qneform-cargo-lockfile
+          path: Cargo.lock
+          if-no-files-found: error

@@ -96,3 +96,24 @@ A typed receipt proves that the configured verifier returned Verified for a spec
 - Required proof obligations are enforced before backend execution.
 - Positive and negative test matrix passes.
 - CI runs for the actual QCM branch and pull-request base.
+
+
+## Implementation progress (2026-11-11)
+
+Implemented on the QCM-09 branch:
+- `LedgerId(u128)` namespace type.
+- `ResourceLedger::new_with_id` for explicit identity restoration.
+- `ResourceLedger::ledger_id` accessor.
+- Ephemeral `ResourceLedger::new` identities generated from a process-local atomic counter.
+- `ProofClaim` now includes `ledger_id`.
+- `VerifiedAttestation::matches` checks ledger identity in addition to module fingerprint, resource handle, resource kind, allocation generation, and proof kind.
+- Unit tests cover explicit identity restoration, distinct ephemeral identities, and cross-ledger receipt mismatch.
+
+Not yet implemented:
+- Durable persistence of ledger identity and allocation-generation counters.
+- Ledger-owned receipt validation in `release`.
+- Removal of boolean cleanliness/restoration attestation methods.
+- Canonical IR fingerprint generation.
+- Backend proof-obligation gate.
+
+The process-local atomic identity is a convenience namespace only. It is not a cryptographic identifier, is not stable across process restarts, and must not be treated as a durable replay-prevention mechanism.

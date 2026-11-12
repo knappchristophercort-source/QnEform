@@ -87,6 +87,8 @@ struct Analyzer {
     allocated: HashMap<String, bool>,
     released: HashMap<String, bool>,
     borrows: HashMap<String, String>,
+    borrow_scope_depth: HashMap<String, usize>,
+    scope_depth: usize,
     borrow_counts: HashMap<String, usize>,
 }
 
@@ -101,6 +103,8 @@ impl Analyzer {
             allocated: HashMap::new(),
             released: HashMap::new(),
             borrows: HashMap::new(),
+            borrow_scope_depth: HashMap::new(),
+            scope_depth: 0,
             borrow_counts: HashMap::new(),
         }
     }
@@ -218,10 +222,24 @@ impl Analyzer {
                     return;
                 }
                 self.borrows.insert(alias.clone(), target.clone());
+                self.borrow_scope_depth.insert(alias.clone(), self.scope_depth);
                 *self.borrow_counts.entry(target.clone()).or_insert(0) += 1;
                 self.instructions.push(SemanticInstruction::Borrow { target: target.clone(), alias: alias.clone() });
             }
             StatementKind::ReturnBorrow { alias } => {
+                let Some(depth) = self.borrow_scope_depth.get(alias).copied() else {
+                    self.error("SEM_UNKNOWN_BORROW", format!("'{alias}' is not an active borrow alias"), statement.span);
+                    return;
+                };
+                if depth != self.scope_depth {
+                    self.error(
+                        "SEM_BORROW_SCOPE_MISMATCH",
+                        format!("borrow alias '{alias}' must be returned in the lexical scope where it was created"),
+                        statement.span,
+                    );
+                    return;
+                }
+                self.borrow_scope_depth.remove(alias);
                 let Some(target) = self.borrows.remove(alias) else {
                     self.error("SEM_UNKNOWN_BORROW", format!("'{alias}' is not an active borrow alias"), statement.span);
                     return;
@@ -329,7 +347,7 @@ impl Analyzer {
                     );
                     return;
                 }
-                self.analyze_block(Domain::Quantum, statements);
+                self.analyze_block(Domain::Quantum, statements, statement.span);
             }
             StatementKind::ClassicalBlock { statements } => {
                 if self.domain == Domain::Quantum {
@@ -340,19 +358,40 @@ impl Analyzer {
                     );
                     return;
                 }
-                self.analyze_block(Domain::Classical, statements);
+                self.analyze_block(Domain::Classical, statements, statement.span);
             }
         }
     }
 
-    fn analyze_block(&mut self, next_domain: Domain, statements: &[Statement]) {
+    fn analyze_block(&mut self, next_domain: Domain, statements: &[Statement], block_span: Span) {
         let previous = self.domain;
         self.scopes.push(HashMap::new());
+        self.scope_depth += 1;
         self.domain = next_domain;
         self.instructions.push(SemanticInstruction::EnterDomain(next_domain));
         self.analyze_statements(statements);
+
+        // A borrow is lexically scoped to the block where it was created.
+        // Do not allow it to escape or be returned from an outer/inner scope.
+        let unreturned: Vec<String> = self.borrow_scope_depth.iter()
+            .filter_map(|(alias, depth)| (*depth == self.scope_depth).then_some(alias.clone()))
+            .collect();
+        for alias in unreturned {
+            self.error(
+                "SEM_BORROW_NOT_RETURNED",
+                format!("borrow alias '{alias}' must be returned before its lexical scope ends"),
+                block_span,
+            );
+            self.borrow_scope_depth.remove(&alias);
+            if let Some(target) = self.borrows.remove(&alias) {
+                let count = self.borrow_counts.entry(target).or_insert(0);
+                *count = count.saturating_sub(1);
+            }
+        }
+
         self.instructions.push(SemanticInstruction::ExitDomain(next_domain));
         self.domain = previous;
+        self.scope_depth -= 1;
         self.scopes.pop();
     }
 }

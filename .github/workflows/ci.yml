@@ -5,9 +5,14 @@ on:
     branches:
       - main
       - "qcm06/**"
+      - "qcm07/**"
+      - "qcm08/**"
+      - "qcm09/**"
   pull_request:
     branches:
       - main
+      - "qcm07/**"
+      - "qcm08/**"
 
 permissions:
   contents: read

@@ -171,6 +171,26 @@ pub struct SemanticIrModule {
 /// an unsigned 64-bit byte length prefix. Enum discriminants are explicit and
 /// must never be reordered within this encoding version.
 impl SemanticIrModule {
+    /// SHA-256 identity of this module's versioned canonical semantic encoding.
+    ///
+    /// Source paths and spans are excluded by canonical_bytes(); semantic
+    /// declarations, operations, effects and proof obligations are included.
+    pub fn fingerprint(&self) -> [u8; 32] {
+        use sha2::{Digest, Sha256};
+        let digest = Sha256::digest(self.canonical_bytes());
+        let mut fingerprint = [0u8; 32];
+        fingerprint.copy_from_slice(&digest);
+        fingerprint
+    }
+
+    /// Lowercase hexadecimal representation suitable for logs and diagnostics.
+    pub fn fingerprint_hex(&self) -> String {
+        self.fingerprint()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
+    }
+
     pub fn canonical_bytes(&self) -> Vec<u8> {
         let mut out = b"QNEFORM-IR-CANON\0".to_vec();
         put_string(&mut out, "qneform-canonical-ir-v1");
@@ -856,6 +876,32 @@ mod tests {
         let first = lower_source("let shots := 10;");
         let second = lower_source("let shots := 11;");
         assert_ne!(first.canonical_bytes(), second.canonical_bytes());
+    }
+
+    #[test]
+    fn sha256_fingerprint_matches_known_answer_for_canonical_encoding() {
+        use sha2::{Digest, Sha256};
+        let ir = lower_source("let shots := 10;");
+        let expected = Sha256::digest(ir.canonical_bytes());
+        assert_eq!(ir.fingerprint().as_slice(), expected.as_slice());
+        assert_eq!(ir.fingerprint_hex().len(), 64);
+    }
+
+    #[test]
+    fn fingerprint_is_stable_and_ignores_source_provenance() {
+        let first = lower_source("qbit q0; allocate q0; measure q0;");
+        let mut second = first.clone();
+        second.source_name = Some("other.qn".to_owned());
+        second.symbols[0].origin.source_name = Some("other.qn".to_owned());
+        second.symbols[0].origin.span.line += 1;
+        assert_eq!(first.fingerprint(), second.fingerprint());
+    }
+
+    #[test]
+    fn fingerprint_changes_when_semantic_content_changes() {
+        let first = lower_source("let shots := 10;");
+        let second = lower_source("let shots := 11;");
+        assert_ne!(first.fingerprint(), second.fingerprint());
     }
 
     #[test]

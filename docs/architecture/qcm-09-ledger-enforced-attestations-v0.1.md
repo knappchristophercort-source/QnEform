@@ -117,3 +117,21 @@ Not yet implemented:
 - Backend proof-obligation gate.
 
 The process-local atomic identity is a convenience namespace only. It is not a cryptographic identifier, is not stable across process restarts, and must not be treated as a durable replay-prevention mechanism.
+
+
+## Receipt-gated release implementation (2026-11-11)
+
+Implemented in `src/resource.rs`:
+- `ResourceState` records an allocation generation assigned from the ledger's monotonically increasing resource handle counter.
+- `ResourceLedger::release` now requires both the expected module fingerprint and an opaque `VerifiedAttestation`.
+- The ledger checks its own ledger identity, resource handle, resource kind, allocation generation, module fingerprint, and required proof kind before changing lifecycle to Released.
+- Required proof mapping is enforced by the ledger: Qubit → Separable; CleanAncilla → CleanAndSeparable; DirtyAncilla → DirtyRestoredAndSeparable.
+- The legacy public boolean methods `attest_cleanliness(handle, bool)` and `attest_dirty_restored(handle, bool)` have been removed.
+- Existing fail-closed checks for ownership, outstanding borrows, and known separability remain independent of the receipt.
+- Tests cover missing/incorrect module binding, cross-ledger receipt replay, borrow blocking, proof-kind compatibility, clean/dirty resource paths, and double release.
+
+Known limitations remain:
+- The module fingerprint is still caller-supplied; canonical versioned IR encoding and hashing are not implemented.
+- The generation counter is in-memory. Durable storage must persist and restore the ledger identity, counter, resources and release state atomically to resist restart/replay.
+- The configured verifier is a trust boundary; the receipt proves only that it returned Verified for the bound claim.
+- No `discard` operation is introduced.

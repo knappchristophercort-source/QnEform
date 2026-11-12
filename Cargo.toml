@@ -13,3 +13,4 @@ name = "qneform"
 path = "src/main.rs"
 
 [dependencies]
+sha2 = "0.10.9"

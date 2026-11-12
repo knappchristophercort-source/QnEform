@@ -31,7 +31,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   resolve-lockfile:
-    if: startsWith(github.ref, 'refs/heads/qcm09/')
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/qcm09/')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

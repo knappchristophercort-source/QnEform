@@ -310,37 +310,85 @@ fn put_string(out: &mut Vec<u8>, value: &str) {
 }
 
 fn domain_tag(value: Domain) -> u8 {
-    match value { Domain::Hybrid => 0, Domain::Quantum => 1, Domain::Classical => 2 }
-}
-fn value_type_tag(value: ValueType) -> u8 {
-    match value { ValueType::Qubit => 0, ValueType::Number => 1, ValueType::String => 2, ValueType::Boolean => 3 }
-}
-fn resource_kind_tag(value: ResourceKind) -> u8 {
-    match value { ResourceKind::Qubit => 0, ResourceKind::QubitRegister => 1, ResourceKind::CleanAncilla => 2, ResourceKind::DirtyAncilla => 3 }
-}
-fn ownership_tag(value: Ownership) -> u8 {
-    match value { Ownership::Owned => 0, Ownership::Borrowed => 1, Ownership::Unassigned => 2 }
-}
-fn lifecycle_tag(value: ResourceLifecycle) -> u8 {
-    match value { ResourceLifecycle::Declared => 0, ResourceLifecycle::Allocated => 1, ResourceLifecycle::Active => 2, ResourceLifecycle::Uncomputed => 3, ResourceLifecycle::VerifiedClean => 4, ResourceLifecycle::Released => 5, ResourceLifecycle::Unknown => 6 }
-}
-fn entanglement_tag(value: EntanglementStatus) -> u8 {
-    match value { EntanglementStatus::KnownSeparable => 0, EntanglementStatus::PossiblyEntangled => 1, EntanglementStatus::KnownEntangled => 2, EntanglementStatus::Unknown => 3 }
-}
-fn effect_tag(value: Effect) -> u8 {
     match value {
-        Effect::PureClassical => 0, Effect::QuantumResourceDeclaration => 1,
-        Effect::Measurement => 2, Effect::Unitary => 3, Effect::NonunitaryChannel => 4,
-        Effect::ResourceAllocation => 5, Effect::ResourceRelease => 6,
-        Effect::ClassicalControl => 7, Effect::ParameterUpdate => 8,
-        Effect::Observation => 9, Effect::Suspend => 10, Effect::Restore => 11,
+        Domain::Hybrid => 0,
+        Domain::Quantum => 1,
+        Domain::Classical => 2,
     }
 }
+
+fn value_type_tag(value: ValueType) -> u8 {
+    match value {
+        ValueType::Qubit => 0,
+        ValueType::Number => 1,
+        ValueType::String => 2,
+        ValueType::Boolean => 3,
+    }
+}
+
+fn resource_kind_tag(value: ResourceKind) -> u8 {
+    match value {
+        ResourceKind::Qubit => 0,
+        ResourceKind::QubitRegister => 1,
+        ResourceKind::CleanAncilla => 2,
+        ResourceKind::DirtyAncilla => 3,
+    }
+}
+
+fn ownership_tag(value: Ownership) -> u8 {
+    match value {
+        Ownership::Owned => 0,
+        Ownership::Borrowed => 1,
+        Ownership::Unassigned => 2,
+    }
+}
+
+fn lifecycle_tag(value: ResourceLifecycle) -> u8 {
+    match value {
+        ResourceLifecycle::Declared => 0,
+        ResourceLifecycle::Allocated => 1,
+        ResourceLifecycle::Active => 2,
+        ResourceLifecycle::Uncomputed => 3,
+        ResourceLifecycle::VerifiedClean => 4,
+        ResourceLifecycle::Released => 5,
+        ResourceLifecycle::Unknown => 6,
+    }
+}
+
+fn entanglement_tag(value: EntanglementStatus) -> u8 {
+    match value {
+        EntanglementStatus::KnownSeparable => 0,
+        EntanglementStatus::PossiblyEntangled => 1,
+        EntanglementStatus::KnownEntangled => 2,
+        EntanglementStatus::Unknown => 3,
+    }
+}
+
+fn effect_tag(value: Effect) -> u8 {
+    match value {
+        Effect::PureClassical => 0,
+        Effect::QuantumResourceDeclaration => 1,
+        Effect::Measurement => 2,
+        Effect::Unitary => 3,
+        Effect::NonunitaryChannel => 4,
+        Effect::ResourceAllocation => 5,
+        Effect::ResourceRelease => 6,
+        Effect::ClassicalControl => 7,
+        Effect::ParameterUpdate => 8,
+        Effect::Observation => 9,
+        Effect::Suspend => 10,
+        Effect::Restore => 11,
+    }
+}
+
 fn obligation_tag(value: ProofObligationKind) -> u8 {
     match value {
-        ProofObligationKind::ResourceOwnership => 0, ProofObligationKind::ResourceLifecycle => 1,
-        ProofObligationKind::AncillaCleanliness => 2, ProofObligationKind::Reversibility => 3,
-        ProofObligationKind::MeasurementSemantics => 4, ProofObligationKind::BackendConformance => 5,
+        ProofObligationKind::ResourceOwnership => 0,
+        ProofObligationKind::ResourceLifecycle => 1,
+        ProofObligationKind::AncillaCleanliness => 2,
+        ProofObligationKind::Reversibility => 3,
+        ProofObligationKind::MeasurementSemantics => 4,
+        ProofObligationKind::BackendConformance => 5,
     }
 }
 

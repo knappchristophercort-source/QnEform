@@ -69,16 +69,17 @@ impl VerifiedAttestation {
         if claim.schema != ATTESTATION_SCHEMA_V1 {
             return Err(AttestationError::UnsupportedSchema);
         }
-        if claim.verifier_id.trim().is_empty()
-            || claim.verifier_id != verifier.verifier_id()
-        {
+        if claim.verifier_id.trim().is_empty() || claim.verifier_id != verifier.verifier_id() {
             return Err(AttestationError::EmptyVerifierIdentity);
         }
         let compatible = matches!(
             (claim.resource_kind, claim.proof_kind),
             (ResourceKind::Qubit, ProofKind::Separable)
                 | (ResourceKind::CleanAncilla, ProofKind::CleanAndSeparable)
-                | (ResourceKind::DirtyAncilla, ProofKind::DirtyRestoredAndSeparable)
+                | (
+                    ResourceKind::DirtyAncilla,
+                    ProofKind::DirtyRestoredAndSeparable
+                )
         );
         if !compatible {
             return Err(AttestationError::InvalidProofKindForResource);
@@ -121,8 +122,13 @@ mod tests {
     struct TestVerifier(VerificationDecision);
 
     impl ProofVerifier for TestVerifier {
-        fn verifier_id(&self) -> &str { "test-verifier/1" }
-        fn verify(&self, _claim: &ProofClaim) -> VerificationDecision { self.0 }
+        fn verifier_id(&self) -> &str {
+            "test-verifier/1"
+        }
+
+        fn verify(&self, _claim: &ProofClaim) -> VerificationDecision {
+            self.0
+        }
     }
 
     fn claim() -> ProofClaim {
@@ -140,14 +146,37 @@ mod tests {
 
     #[test]
     fn verified_receipt_is_bound_to_exact_module_and_resource_generation() {
-        let receipt = VerifiedAttestation::verify(
-            claim(),
-            &TestVerifier(VerificationDecision::Verified),
-        ).unwrap();
-        assert!(receipt.matches(&[7; 32], ResourceHandle(4), ResourceKind::Qubit, 2, ProofKind::Separable));
-        assert!(!receipt.matches(&[8; 32], ResourceHandle(4), ResourceKind::Qubit, 2, ProofKind::Separable));
-        assert!(!receipt.matches(&[7; 32], ResourceHandle(4), ResourceKind::Qubit, 3, ProofKind::Separable));
-        assert!(!receipt.matches(&[7; 32], ResourceHandle(5), ResourceKind::Qubit, 2, ProofKind::Separable));
+        let receipt =
+            VerifiedAttestation::verify(claim(), &TestVerifier(VerificationDecision::Verified))
+                .unwrap();
+        assert!(receipt.matches(
+            &[7; 32],
+            ResourceHandle(4),
+            ResourceKind::Qubit,
+            2,
+            ProofKind::Separable
+        ));
+        assert!(!receipt.matches(
+            &[8; 32],
+            ResourceHandle(4),
+            ResourceKind::Qubit,
+            2,
+            ProofKind::Separable
+        ));
+        assert!(!receipt.matches(
+            &[7; 32],
+            ResourceHandle(4),
+            ResourceKind::Qubit,
+            3,
+            ProofKind::Separable
+        ));
+        assert!(!receipt.matches(
+            &[7; 32],
+            ResourceHandle(5),
+            ResourceKind::Qubit,
+            2,
+            ProofKind::Separable
+        ));
     }
 
     #[test]

@@ -6,6 +6,14 @@
 //! measurement result.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_EPHEMERAL_LEDGER_ID: AtomicU64 = AtomicU64::new(1);
+
+/// Stable ledger namespace. Persist this value with a durable ledger; the
+/// default constructor creates an ephemeral process-local identity only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LedgerId(pub u128);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ResourceHandle(pub u64);
@@ -97,8 +105,9 @@ struct BorrowRecord {
     resource: ResourceHandle,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ResourceLedger {
+    ledger_id: LedgerId,
     next_resource: u64,
     next_borrow: u64,
     by_name: HashMap<String, ResourceHandle>,
@@ -106,9 +115,35 @@ pub struct ResourceLedger {
     borrows: HashMap<BorrowHandle, BorrowRecord>,
 }
 
+impl Default for ResourceLedger {
+    fn default() -> Self {
+        let nonce = NEXT_EPHEMERAL_LEDGER_ID.fetch_add(1, Ordering::Relaxed);
+        Self::new_with_id(LedgerId(nonce as u128))
+    }
+}
+
 impl ResourceLedger {
+    /// Create a ledger with an explicitly supplied identity. Durable stores
+    /// must persist and restore this identity; do not reuse it for a new ledger.
+    pub fn new_with_id(ledger_id: LedgerId) -> Self {
+        Self {
+            ledger_id,
+            next_resource: 0,
+            next_borrow: 0,
+            by_name: HashMap::new(),
+            resources: HashMap::new(),
+            borrows: HashMap::new(),
+        }
+    }
+
+    /// Create an ephemeral ledger with a process-local identity. This identity
+    /// is not restart-stable and must not be used as a durable replay boundary.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn ledger_id(&self) -> LedgerId {
+        self.ledger_id
     }
 
     pub fn allocate(

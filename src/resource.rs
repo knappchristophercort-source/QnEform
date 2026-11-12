@@ -304,7 +304,9 @@ mod tests {
 
     struct TestVerifier;
     impl ProofVerifier for TestVerifier {
-        fn verifier_id(&self) -> &str { "resource-ledger-test/1" }
+        fn verifier_id(&self) -> &str {
+            "resource-ledger-test/1"
+        }
         fn verify(&self, _claim: &ProofClaim) -> VerificationDecision {
             VerificationDecision::Verified
         }

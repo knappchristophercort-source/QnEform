@@ -91,6 +91,41 @@ pub struct ProofObligation {
     pub description: String,
 }
 
+/// A required proof obligation that blocks backend readiness.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BackendReadinessIssue {
+    pub obligation_id: u32,
+    pub kind: ProofObligationKind,
+    pub subject_resource: Option<ResourceId>,
+    pub description: String,
+}
+
+/// All unresolved required proof obligations found during backend preflight.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BackendReadinessError {
+    pub issues: Vec<BackendReadinessIssue>,
+}
+
+impl std::fmt::Display for BackendReadinessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "backend readiness blocked by {} unresolved required proof obligation(s)",
+            self.issues.len()
+        )?;
+        for issue in &self.issues {
+            write!(
+                f,
+                "\n- obligation {} ({:?}): {}",
+                issue.obligation_id, issue.kind, issue.description
+            )?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for BackendReadinessError {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceOrigin {
     pub span: Span,
@@ -189,6 +224,33 @@ impl SemanticIrModule {
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect()
+    }
+
+    /// Reject backend preparation while any required proof obligation is unresolved.
+    ///
+    /// This is a fail-closed IR preflight check, not an execution authorization
+    /// token or proof verifier. The IR currently exposes obligation status as
+    /// mutable data; a production backend must additionally require trusted,
+    /// provenance-bound verifier evidence before executing quantum work.
+    /// Optional unresolved obligations do not block readiness.
+    pub fn validate_backend_readiness(&self) -> Result<(), BackendReadinessError> {
+        let issues = self
+            .proof_obligations
+            .iter()
+            .filter(|obligation| obligation.required && !obligation.satisfied)
+            .map(|obligation| BackendReadinessIssue {
+                obligation_id: obligation.id,
+                kind: obligation.kind,
+                subject_resource: obligation.subject_resource,
+                description: obligation.description.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        if issues.is_empty() {
+            Ok(())
+        } else {
+            Err(BackendReadinessError { issues })
+        }
     }
 
     pub fn canonical_bytes(&self) -> Vec<u8> {
@@ -842,6 +904,61 @@ mod tests {
     }
 
     #[test]
+    fn backend_readiness_rejects_each_unresolved_required_obligation() {
+        let mut ir = lower_source("qbit q0;");
+        ir.proof_obligations.push(ProofObligation {
+            id: 99,
+            kind: ProofObligationKind::BackendConformance,
+            subject_resource: None,
+            required: true,
+            satisfied: false,
+            source: None,
+            description: "backend profile has not been verified".to_owned(),
+        });
+
+        let error = ir.validate_backend_readiness().unwrap_err();
+        assert_eq!(error.issues.len(), 2);
+        assert_eq!(error.issues[0].obligation_id, 0);
+        assert_eq!(error.issues[0].kind, ProofObligationKind::ResourceOwnership);
+        assert_eq!(error.issues[1].obligation_id, 99);
+        assert_eq!(
+            error.issues[1].kind,
+            ProofObligationKind::BackendConformance
+        );
+    }
+
+    #[test]
+    fn backend_readiness_allows_optional_unresolved_obligations() {
+        let mut ir = lower_source("let shots := 10;");
+        ir.proof_obligations.push(ProofObligation {
+            id: 7,
+            kind: ProofObligationKind::MeasurementSemantics,
+            subject_resource: None,
+            required: false,
+            satisfied: false,
+            source: None,
+            description: "optional analysis not performed".to_owned(),
+        });
+        assert_eq!(ir.validate_backend_readiness(), Ok(()));
+    }
+
+    #[test]
+    fn backend_readiness_passes_when_all_required_obligations_are_satisfied() {
+        let mut ir = lower_source("qbit q0;");
+        for obligation in &mut ir.proof_obligations {
+            obligation.satisfied = true;
+        }
+        assert_eq!(ir.validate_backend_readiness(), Ok(()));
+    }
+
+    #[test]
+    fn backend_readiness_passes_when_no_obligations_exist() {
+        let ir = lower_source("let shots := 10;");
+        assert!(ir.proof_obligations.is_empty());
+        assert_eq!(ir.validate_backend_readiness(), Ok(()));
+    }
+
+    #[test]
     fn resource_proof_obligation_is_explicitly_unsatisfied() {
         let ir = lower_source("qbit q0;");
         assert_eq!(ir.proof_obligations.len(), 1);
@@ -862,7 +979,7 @@ mod tests {
 
     #[test]
     fn canonical_encoding_is_stable_and_excludes_source_provenance() {
-        let mut first = lower_source("qbit q0; allocate q0; measure q0;");
+        let first = lower_source("qbit q0; allocate q0; measure q0;");
         let mut second = first.clone();
         second.source_name = Some("different/path.qn".to_owned());
         second.symbols[0].origin.source_name = Some("different/path.qn".to_owned());

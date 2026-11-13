@@ -16,14 +16,16 @@ Implemented:
 - Initial typed semantic module (`qneform-semantic-0.1`)
 - Versioned Semantic IR schema (`qneform-ir-0.2`) with module-local IDs, resource records, effects, proof obligations, and source provenance
 - Public `compile_to_ir` pipeline
+- Fail-closed backend readiness preflight that reports all unresolved required proof obligations
 - Unit tests for syntax and semantic acceptance/rejection
 - GitHub Actions build/test and formatting workflow
 
 Not implemented:
-- Complete entanglement-aware static ownership proofs and typed, provenance-bound proof attestations
-- Typed, provenance-bound proof objects for cleanliness and dirty-ancilla restoration
-- Canonical Semantic IR serialization and cryptographic source/IR binding
-- Physical allocation, quantum execution, and backend enforcement of resource lifecycle contracts
+- Complete entanglement-aware static ownership proofs
+- Authenticated proof-obligation resolution; QCM-11 currently provides status preflight only
+- Cryptographic binding between original source text, validated AST, and lowered IR
+- Production backend authorization and backend-specific conformance evidence
+- Physical allocation and quantum execution
 - Measurement-result semantics, gate semantics, simulator, and hardware backends
 - Quantum gate syntax or gate semantics
 - Quantum state simulation or physical hardware execution
@@ -73,7 +75,7 @@ The planned pipeline is:
 
 The semantic model must distinguish classical, quantum, hybrid, boundary, and abstract lifecycle domains. Quantum resources require explicit ownership and lifecycle rules. QCM-03 resource lifecycle statements are now parsed, semantically checked, and lowered to typed IR operations. The separate ledger remains a bookkeeping API; no physical allocation or backend execution is implied. Measurement is explicit and state-altering. Simulator behavior must not be presented as physical hardware behavior.
 
-See [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline, [frontend syntax specification](docs/language/frontend-syntax-v0.1.md), [Semantic Kernel v0.1](docs/architecture/semantic-kernel-v0.1.md), and [Semantic IR v0.2](docs/architecture/semantic-ir-v0.2.md).
+See [QCM-11 backend proof-obligation preflight](docs/architecture/qcm-11-backend-proof-obligation-preflight-v0.1.md), [QCM-06 repository reconciliation](docs/architecture/QCM-06-repository-reconciliation.md) for the audit baseline, [frontend syntax specification](docs/language/frontend-syntax-v0.1.md), [Semantic Kernel v0.1](docs/architecture/semantic-kernel-v0.1.md), and [Semantic IR v0.2](docs/architecture/semantic-ir-v0.2.md).
 
 ## Project boundaries
 

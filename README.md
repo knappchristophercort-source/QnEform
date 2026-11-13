@@ -21,12 +21,11 @@ Implemented:
 - GitHub Actions build/test and formatting workflow
 
 Not implemented:
-- Complete entanglement-aware static ownership proofs and typed, provenance-bound proof attestations
-- Typed, provenance-bound proof objects for cleanliness and dirty-ancilla restoration
-- Canonical Semantic IR serialization and cryptographic source/IR binding
-- Authenticated proof-obligation resolution (QCM-11 currently provides status preflight only)
+- Complete entanglement-aware static ownership proofs
+- Authenticated proof-obligation resolution; QCM-11 currently provides status preflight only
+- Cryptographic binding between original source text, validated AST, and lowered IR
+- Production backend authorization and backend-specific conformance evidence
 - Physical allocation and quantum execution
-- Authenticated proof-resolution and production backend authorization
 - Measurement-result semantics, gate semantics, simulator, and hardware backends
 - Quantum gate syntax or gate semantics
 - Quantum state simulation or physical hardware execution

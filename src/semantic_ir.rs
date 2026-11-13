@@ -921,7 +921,10 @@ mod tests {
         assert_eq!(error.issues[0].obligation_id, 0);
         assert_eq!(error.issues[0].kind, ProofObligationKind::ResourceOwnership);
         assert_eq!(error.issues[1].obligation_id, 99);
-        assert_eq!(error.issues[1].kind, ProofObligationKind::BackendConformance);
+        assert_eq!(
+            error.issues[1].kind,
+            ProofObligationKind::BackendConformance
+        );
     }
 
     #[test]
@@ -976,7 +979,7 @@ mod tests {
 
     #[test]
     fn canonical_encoding_is_stable_and_excludes_source_provenance() {
-        let mut first = lower_source("qbit q0; allocate q0; measure q0;");
+        let first = lower_source("qbit q0; allocate q0; measure q0;");
         let mut second = first.clone();
         second.source_name = Some("different/path.qn".to_owned());
         second.symbols[0].origin.source_name = Some("different/path.qn".to_owned());

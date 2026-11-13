@@ -9,13 +9,13 @@ on:
       - "qcm08/**"
       - "qcm09/**"
       - "qcm11/**"
-      - "qcm09/**"
-      - "qcm11/**"
   pull_request:
     branches:
       - main
       - "qcm07/**"
       - "qcm08/**"
+      - "qcm09/**"
+      - "qcm11/**"
 
 permissions:
   contents: read
@@ -32,4 +32,3 @@ jobs:
         run: cargo test --locked
       - name: Check formatting
         run: cargo fmt --all -- --check
-

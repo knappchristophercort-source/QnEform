@@ -45,8 +45,8 @@ impl CompilationEnvelope {
         &self.obligation_fingerprint
     }
 
-    pub fn compiler_version(&self) -> &str {
-        &self.compiler_version
+    pub fn compiler_package_version(&self) -> &str {
+        &self.compiler_package_version
     }
 
     pub fn ir_schema_version(&self) -> &str {
@@ -72,7 +72,7 @@ impl CompilationEnvelope {
         bytes.extend_from_slice(&self.source_digest);
         bytes.extend_from_slice(&self.module_fingerprint);
         bytes.extend_from_slice(&self.obligation_fingerprint);
-        put_string(&mut bytes, &self.compiler_version);
+        put_string(&mut bytes, &self.compiler_package_version);
         put_string(&mut bytes, &self.ir_schema_version);
 
         let digest = Sha256::digest(bytes);
@@ -117,7 +117,7 @@ pub fn compile_to_envelope(
         source_digest: sha256(source.as_bytes()),
         module_fingerprint: module.fingerprint(),
         obligation_fingerprint: module.obligation_fingerprint(),
-        compiler_version: env!("CARGO_PKG_VERSION").to_owned(),
+        compiler_package_version: env!("CARGO_PKG_VERSION").to_owned(),
         ir_schema_version: module.schema_version.clone(),
         source_name: source_name.map(str::to_owned),
         module,

@@ -1,6 +1,6 @@
 # QCM-12 Authenticated Proof-Obligation Resolution v0.1
 
-Status: architecture specification; implementation and backend authorization are not yet complete.
+Status: QCM-12 receipt and fingerprint implementation present; backend execution authorization and concrete proof profiles remain deferred.
 
 ## Objective
 
@@ -16,7 +16,7 @@ QCM-08's resource attestation is a separate protocol: it binds a resource lifecy
 
 ## Proposed claim and receipt
 
-Introduce a separately versioned obligation-attestation schema and opaque `VerifiedObligationReceipt`.
+Implemented in `src/obligation.rs`: separately versioned `OBLIGATION_ATTESTATION_SCHEMA_V1`, `ObligationClaim`, `ObligationVerifier`, and opaque `VerifiedObligationReceipt`.
 
 The verifier claim must bind, at minimum:
 
@@ -44,15 +44,13 @@ A digest is an evidence identifier, not proof by itself. Verifier soundness, evi
 
 The current canonical IR encoding includes `ProofObligation.satisfied`. That status is mutable diagnostic metadata and must not be part of the semantic module fingerprint used by QCM-12 attestations.
 
-QCM-12 implementation must revise the canonical encoding version (rather than silently changing v1 semantics) so that the attested fingerprint includes obligation identity and semantic requirements—ID, kind, subject, required flag and description—but excludes mutable satisfaction status. This prevents the act of recording a result from changing the module identity to which that result is bound.
+Implemented as `SemanticIrModule::obligation_fingerprint()`. It hashes a domain-separated `qneform-obligation-canonical-v1` envelope over the existing canonical IR bytes after normalizing every mutable satisfaction status to false. The attested identity therefore retains obligation identity and requirements—ID, kind, subject, required flag and description—but excludes mutable status. The legacy QCM-10 `fingerprint()` and its v1 encoding remain unchanged. This prevents recording a result from changing the module identity to which that result is bound.
 
 Any future canonical encoding change requires an explicit version/tag and known-answer/regression tests. The legacy fingerprint version must remain distinguishable.
 
 ## Readiness API
 
-Add a receipt-based readiness validator, conceptually:
-
-`validate_backend_readiness_with_receipts(&[VerifiedObligationReceipt])`
+Implemented as `SemanticIrModule::validate_backend_readiness_with_receipts(&[VerifiedObligationReceipt])`, backed by `obligation::validate_backend_readiness`.
 
 It must:
 
@@ -98,4 +96,4 @@ Optional obligations do not require receipts for readiness. A module with no req
 - Concrete proof profiles for each obligation kind.
 - Simulator, OpenQASM 3 export and physical hardware execution.
 
-QCM-12 is not complete until the receipt type, canonical fingerprint versioning, readiness API and tests are implemented and CI passes. No backend execution is introduced by this specification.
+Implemented coverage includes status-independent fingerprint stability, semantic requirement sensitivity, exact module/obligation matching, mutable-status bypass rejection, duplicate receipt rejection, foreign-module receipt rejection, and Verified/Rejected/Inconclusive/Unsupported verifier decisions. CI results are recorded on the pull request. No backend execution is introduced by QCM-12.

@@ -79,6 +79,5 @@ pub fn compile_to_ir(
     source: &str,
     source_name: Option<&str>,
 ) -> Result<semantic_ir::SemanticIrModule, String> {
-    compilation::compile_to_envelope(source, source_name)
-        .map(|envelope| envelope.module().clone())
+    compilation::compile_to_envelope(source, source_name).map(|envelope| envelope.module().clone())
 }

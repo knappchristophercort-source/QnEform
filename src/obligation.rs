@@ -108,11 +108,7 @@ impl VerifiedObligationReceipt {
         &self.claim.evidence_digest
     }
 
-    pub fn matches(
-        &self,
-        module: &SemanticIrModule,
-        obligation: &ProofObligation,
-    ) -> bool {
+    pub fn matches(&self, module: &SemanticIrModule, obligation: &ProofObligation) -> bool {
         self.claim.module_fingerprint == module.obligation_fingerprint()
             && self.claim.obligation_id == obligation.id
             && self.claim.kind == obligation.kind
@@ -187,9 +183,10 @@ pub fn validate_backend_readiness(
             duplicate_receipt_ids.push(receipt.obligation_id());
         }
 
-        let belongs_to_required_obligation = module.proof_obligations.iter().any(|obligation| {
-            obligation.required && receipt.matches(module, obligation)
-        });
+        let belongs_to_required_obligation = module
+            .proof_obligations
+            .iter()
+            .any(|obligation| obligation.required && receipt.matches(module, obligation));
         if !belongs_to_required_obligation {
             unexpected_receipt_ids.push(receipt.obligation_id());
         }
@@ -232,10 +229,7 @@ mod tests {
         compile_to_ir("qbit q0;", Some("test.qn")).unwrap()
     }
 
-    fn receipt(
-        module: &SemanticIrModule,
-        obligation_index: usize,
-    ) -> VerifiedObligationReceipt {
+    fn receipt(module: &SemanticIrModule, obligation_index: usize) -> VerifiedObligationReceipt {
         let obligation = &module.proof_obligations[obligation_index];
         let claim = ObligationClaim::for_obligation(
             module,
@@ -255,7 +249,10 @@ mod tests {
         let first = module();
         let mut second = first.clone();
         second.proof_obligations[0].satisfied = true;
-        assert_eq!(first.obligation_fingerprint(), second.obligation_fingerprint());
+        assert_eq!(
+            first.obligation_fingerprint(),
+            second.obligation_fingerprint()
+        );
         assert_ne!(first.fingerprint(), second.fingerprint());
     }
 
@@ -264,7 +261,10 @@ mod tests {
         let first = module();
         let mut second = first.clone();
         second.proof_obligations[0].required = false;
-        assert_ne!(first.obligation_fingerprint(), second.obligation_fingerprint());
+        assert_ne!(
+            first.obligation_fingerprint(),
+            second.obligation_fingerprint()
+        );
     }
 
     #[test]
@@ -305,9 +305,18 @@ mod tests {
             "qneform-test-verifier/1",
         );
         for (decision, expected) in [
-            (ObligationVerificationDecision::Rejected, ObligationAttestationError::Rejected),
-            (ObligationVerificationDecision::Inconclusive, ObligationAttestationError::Inconclusive),
-            (ObligationVerificationDecision::Unsupported, ObligationAttestationError::Unsupported),
+            (
+                ObligationVerificationDecision::Rejected,
+                ObligationAttestationError::Rejected,
+            ),
+            (
+                ObligationVerificationDecision::Inconclusive,
+                ObligationAttestationError::Inconclusive,
+            ),
+            (
+                ObligationVerificationDecision::Unsupported,
+                ObligationAttestationError::Unsupported,
+            ),
         ] {
             assert_eq!(
                 VerifiedObligationReceipt::verify(claim.clone(), &TestVerifier(decision)),

@@ -169,7 +169,7 @@ impl PortableCompilationAttestation {
     pub fn verify_source(&self, source: &str) -> bool {
         use sha2::{Digest, Sha256};
         let digest = Sha256::digest(source.as_bytes());
-        digest.as_slice() == self.source_digest
+        digest.as_slice() == &self.source_digest[..]
     }
 
     /// Check an independently available IR module against both recorded IDs.
@@ -306,6 +306,21 @@ mod tests {
                 &manifest.to_canonical_bytes()[..10]
             ),
             Err(PortableAttestationError::Truncated)
+        );
+    }
+
+    #[test]
+    fn parser_rejects_unknown_envelope_schema() {
+        let envelope = compile_to_envelope("let shots := 10;", None).unwrap();
+        let manifest = PortableCompilationAttestation::from_envelope(&envelope).unwrap();
+        let mut bytes = manifest.to_canonical_bytes();
+        let schema_start = MAGIC.len() + 2 + 2;
+        let schema_length = bytes[MAGIC.len() + 2] as usize * 256
+            + bytes[MAGIC.len() + 3] as usize;
+        bytes[schema_start..schema_start + schema_length].fill(b'x');
+        assert_eq!(
+            PortableCompilationAttestation::from_canonical_bytes(&bytes),
+            Err(PortableAttestationError::UnsupportedEnvelopeSchema)
         );
     }
 

@@ -9,6 +9,7 @@ on:
       - "qcm08/**"
       - "qcm09/**"
       - "qcm11/**"
+      - "qcm12/**"
   pull_request:
     branches:
       - main
@@ -16,6 +17,7 @@ on:
       - "qcm08/**"
       - "qcm09/**"
       - "qcm11/**"
+      - "qcm12/**"
 
 permissions:
   contents: read

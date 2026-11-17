@@ -6,6 +6,7 @@
 
 pub mod ast;
 pub mod lexer;
+pub mod obligation;
 pub mod parser;
 pub mod proof;
 pub mod resource;

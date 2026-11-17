@@ -218,6 +218,35 @@ impl SemanticIrModule {
         fingerprint
     }
 
+    /// Versioned fingerprint used by authenticated proof-obligation claims.
+    ///
+    /// Unlike the legacy module fingerprint, this identity deliberately excludes
+    /// mutable verifier status while retaining obligation identity, kind, subject,
+    /// requiredness, and description. A separate domain/version prefix prevents
+    /// cross-protocol substitution with the QCM-10 fingerprint.
+    pub fn obligation_fingerprint(&self) -> [u8; 32] {
+        use sha2::{Digest, Sha256};
+        let mut stable = self.clone();
+        for obligation in &mut stable.proof_obligations {
+            obligation.satisfied = false;
+        }
+        let mut input = b"QNEFORM-OBLIGATION-CANON\0".to_vec();
+        put_string(&mut input, "qneform-obligation-canonical-v1");
+        input.extend_from_slice(&stable.canonical_bytes());
+        let digest = Sha256::digest(input);
+        let mut fingerprint = [0u8; 32];
+        fingerprint.copy_from_slice(&digest);
+        fingerprint
+    }
+
+    /// Lowercase hexadecimal representation of the obligation fingerprint.
+    pub fn obligation_fingerprint_hex(&self) -> String {
+        self.obligation_fingerprint()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
+    }
+
     /// Lowercase hexadecimal representation suitable for logs and diagnostics.
     pub fn fingerprint_hex(&self) -> String {
         self.fingerprint()
@@ -251,6 +280,17 @@ impl SemanticIrModule {
         } else {
             Err(BackendReadinessError { issues })
         }
+    }
+
+    /// Require authenticated verifier receipts for every required obligation.
+    ///
+    /// Unlike the diagnostic preflight above, this method never consults the
+    /// mutable satisfied-status field.
+    pub fn validate_backend_readiness_with_receipts(
+        &self,
+        receipts: &[crate::obligation::VerifiedObligationReceipt],
+    ) -> Result<(), crate::obligation::AuthenticatedReadinessError> {
+        crate::obligation::validate_backend_readiness(self, receipts)
     }
 
     pub fn canonical_bytes(&self) -> Vec<u8> {

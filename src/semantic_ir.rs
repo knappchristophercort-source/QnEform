@@ -262,16 +262,6 @@ impl SemanticIrModule {
     /// mutable data; a production backend must additionally require trusted,
     /// provenance-bound verifier evidence before executing quantum work.
     /// Optional unresolved obligations do not block readiness.
-    /// Require authenticated verifier receipts for every required obligation.
-    ///
-    /// Unlike the diagnostic preflight above, this method never consults the
-    /// mutable satisfied-status field.
-    pub fn validate_backend_readiness_with_receipts(
-        &self,
-        receipts: &[crate::obligation::VerifiedObligationReceipt],
-    ) -> Result<(), crate::obligation::AuthenticatedReadinessError> {
-        crate::obligation::validate_backend_readiness(self, receipts)
-    }
     pub fn validate_backend_readiness(&self) -> Result<(), BackendReadinessError> {
         let issues = self
             .proof_obligations
@@ -290,6 +280,17 @@ impl SemanticIrModule {
         } else {
             Err(BackendReadinessError { issues })
         }
+    }
+
+    /// Require authenticated verifier receipts for every required obligation.
+    ///
+    /// Unlike the diagnostic preflight above, this method never consults the
+    /// mutable satisfied-status field.
+    pub fn validate_backend_readiness_with_receipts(
+        &self,
+        receipts: &[crate::obligation::VerifiedObligationReceipt],
+    ) -> Result<(), crate::obligation::AuthenticatedReadinessError> {
+        crate::obligation::validate_backend_readiness(self, receipts)
     }
 
     pub fn canonical_bytes(&self) -> Vec<u8> {

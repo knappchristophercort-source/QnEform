@@ -5,9 +5,8 @@
 //! not a signed compiler attestation or proof that the compiler is correct.
 
 use crate::{
-    semantic,
+    parse_source, semantic,
     semantic_ir::{self, SemanticIrModule},
-    parse_source,
 };
 
 pub const COMPILATION_ENVELOPE_SCHEMA_V1: &str = "qneform-compilation-envelope-0.1";
@@ -23,7 +22,7 @@ pub struct CompilationEnvelope {
     source_digest: [u8; 32],
     module_fingerprint: [u8; 32],
     obligation_fingerprint: [u8; 32],
-    compiler_version: String,
+    compiler_package_version: String,
     ir_schema_version: String,
     source_name: Option<String>,
     module: SemanticIrModule,
@@ -108,7 +107,7 @@ pub fn compile_to_envelope(
             .into_iter()
             .map(|error| error.to_string())
             .collect::<Vec<_>>()
-            .join("\\n")
+            .join("\n")
     })?;
     let module = semantic_ir::lower(&program, &validated, source_name)
         .map_err(|error| error.to_string())?;

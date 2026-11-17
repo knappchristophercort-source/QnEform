@@ -10,6 +10,7 @@ on:
       - "qcm09/**"
       - "qcm11/**"
       - "qcm12/**"
+      - "qcm13/**"
   pull_request:
     branches:
       - main

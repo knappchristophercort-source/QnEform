@@ -5,6 +5,7 @@
 //! yet execute or simulate quantum programs.
 
 pub mod ast;
+pub mod compilation;
 pub mod lexer;
 pub mod obligation;
 pub mod parser;
@@ -78,13 +79,5 @@ pub fn compile_to_ir(
     source: &str,
     source_name: Option<&str>,
 ) -> Result<semantic_ir::SemanticIrModule, String> {
-    let program = parse_source(source)?;
-    let validated = semantic::analyze(&program).map_err(|errors| {
-        errors
-            .into_iter()
-            .map(|error| error.to_string())
-            .collect::<Vec<_>>()
-            .join("\\n")
-    })?;
-    semantic_ir::lower(&program, &validated, source_name).map_err(|error| error.to_string())
+    compilation::compile_to_envelope(source, source_name).map(|envelope| envelope.module().clone())
 }

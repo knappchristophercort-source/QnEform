@@ -359,7 +359,10 @@ mod tests {
         let mut second = first.clone();
         second.source_name = Some("another/location.qn".to_owned());
         second.proof_obligations[0].source.as_mut().unwrap().line += 5;
-        assert_eq!(first.obligation_fingerprint(), second.obligation_fingerprint());
+        assert_eq!(
+            first.obligation_fingerprint(),
+            second.obligation_fingerprint()
+        );
     }
 
     #[test]

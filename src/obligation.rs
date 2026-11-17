@@ -317,6 +317,58 @@ mod tests {
     }
 
     #[test]
+    fn verifier_identity_mismatch_and_unsupported_schema_fail_closed() {
+        let ir = module();
+        let mut claim = ObligationClaim::for_obligation(
+            &ir,
+            &ir.proof_obligations[0],
+            [0xA5; 32],
+            "different-verifier/1",
+        );
+        assert_eq!(
+            VerifiedObligationReceipt::verify(
+                claim.clone(),
+                &TestVerifier(ObligationVerificationDecision::Verified)
+            ),
+            Err(ObligationAttestationError::EmptyOrMismatchedVerifierIdentity)
+        );
+
+        claim.verifier_id = "qneform-test-verifier/1".to_owned();
+        claim.schema = "unsupported-schema".to_owned();
+        assert_eq!(
+            VerifiedObligationReceipt::verify(
+                claim,
+                &TestVerifier(ObligationVerificationDecision::Verified)
+            ),
+            Err(ObligationAttestationError::UnsupportedSchema)
+        );
+    }
+
+    #[test]
+    fn source_provenance_does_not_change_obligation_fingerprint() {
+        let first = module();
+        let mut second = first.clone();
+        second.source_name = Some("another/location.qn".to_owned());
+        second.proof_obligations[0].source.as_mut().unwrap().line += 5;
+        assert_eq!(first.obligation_fingerprint(), second.obligation_fingerprint());
+    }
+
+    #[test]
+    fn duplicate_obligation_ids_fail_closed() {
+        let mut ir = module();
+        ir.proof_obligations.push(ir.proof_obligations[0].clone());
+        let error = validate_backend_readiness(&ir, &[]).unwrap_err();
+        assert!(error.duplicate_obligation_ids.contains(&0));
+    }
+
+    #[test]
+    fn optional_unresolved_obligations_need_no_receipt() {
+        let mut ir = module();
+        ir.proof_obligations[0].required = false;
+        assert_eq!(validate_backend_readiness(&ir, &[]), Ok(()));
+    }
+
+    #[test]
     fn duplicate_receipts_fail_closed() {
         let ir = module();
         let verified = receipt(&ir, 0);

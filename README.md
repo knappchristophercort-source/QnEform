@@ -17,13 +17,13 @@ Implemented:
 - Versioned Semantic IR schema (`qneform-ir-0.2`) with module-local IDs, resource records, effects, proof obligations, and source provenance
 - Public `compile_to_ir` pipeline
 - QCM-11 fail-closed diagnostic backend-readiness preflight; it is not authenticated proof or execution authorization
-- QCM-12 authenticated proof-obligation resolution architecture specification (implementation pending)
+- QCM-12 status-independent obligation fingerprint and opaque verifier-issued proof-obligation receipts; receipt-gated readiness requires exactly one matching receipt per required obligation
 - Unit tests for syntax and semantic acceptance/rejection
 - GitHub Actions build/test and formatting workflow
 
 Not implemented:
 - Complete entanglement-aware static ownership proofs
-- Authenticated proof-obligation resolution; QCM-11 currently provides mutable-status preflight only, and QCM-12 specifies the next design
+- Concrete proof profiles, evidence acquisition and verifier trust/key management; QCM-12 authenticates the configured verifier decision but does not independently establish verifier soundness or physical quantum-state truth
 - Cryptographic binding between original source text, validated AST, and lowered IR
 - Production backend authorization and backend-specific conformance evidence
 - Physical allocation and quantum execution

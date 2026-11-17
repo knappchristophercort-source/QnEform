@@ -9,6 +9,7 @@ pub mod compilation;
 pub mod lexer;
 pub mod obligation;
 pub mod parser;
+pub mod portable_attestation;
 pub mod proof;
 pub mod resource;
 pub mod semantic;

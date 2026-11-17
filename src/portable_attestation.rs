@@ -114,9 +114,7 @@ impl PortableCompilationAttestation {
 
     /// Strict parser. Rejects unknown versions, oversized/empty metadata,
     /// invalid UTF-8, truncation and any trailing bytes.
-    pub fn from_canonical_bytes(
-        bytes: &[u8],
-    ) -> Result<Self, PortableAttestationError> {
+    pub fn from_canonical_bytes(bytes: &[u8]) -> Result<Self, PortableAttestationError> {
         let mut cursor = Cursor::new(bytes);
         if cursor.read_exact(MAGIC.len())? != MAGIC {
             return Err(PortableAttestationError::InvalidMagic);
@@ -133,7 +131,9 @@ impl PortableCompilationAttestation {
             return Err(PortableAttestationError::UnsupportedEnvelopeSchema);
         }
         if compiler_package_version.is_empty() {
-            return Err(PortableAttestationError::EmptyField("compiler_package_version"));
+            return Err(PortableAttestationError::EmptyField(
+                "compiler_package_version",
+            ));
         }
         if ir_schema_version.is_empty() {
             return Err(PortableAttestationError::EmptyField("ir_schema_version"));
@@ -231,7 +231,8 @@ impl<'a> Cursor<'a> {
             return Err(PortableAttestationError::FieldTooLong);
         }
         let bytes = self.read_exact(length)?;
-        let value = std::str::from_utf8(bytes).map_err(|_| PortableAttestationError::InvalidUtf8)?;
+        let value =
+            std::str::from_utf8(bytes).map_err(|_| PortableAttestationError::InvalidUtf8)?;
         Ok(value.to_owned())
     }
 

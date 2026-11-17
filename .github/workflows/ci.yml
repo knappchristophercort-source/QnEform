@@ -14,6 +14,7 @@ on:
   pull_request:
     branches:
       - main
+      - "qcm13/**"
       - "qcm07/**"
       - "qcm08/**"
       - "qcm09/**"

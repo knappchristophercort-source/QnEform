@@ -26,7 +26,7 @@ The envelope records:
 - SHA-256 of the exact UTF-8 source bytes;
 - QCM-10 semantic module fingerprint;
 - QCM-12 status-independent obligation fingerprint;
-- crate/compiler package version;
+- crate package version;
 - Semantic IR schema version;
 - optional source name as provenance metadata;
 - the resulting Semantic IR module behind a private field.

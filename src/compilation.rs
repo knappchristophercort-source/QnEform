@@ -109,8 +109,8 @@ pub fn compile_to_envelope(
             .collect::<Vec<_>>()
             .join("\n")
     })?;
-    let module = semantic_ir::lower(&program, &validated, source_name)
-        .map_err(|error| error.to_string())?;
+    let module =
+        semantic_ir::lower(&program, &validated, source_name).map_err(|error| error.to_string())?;
 
     Ok(CompilationEnvelope {
         schema: COMPILATION_ENVELOPE_SCHEMA_V1.to_owned(),
@@ -149,7 +149,10 @@ mod tests {
         assert_eq!(envelope.schema(), COMPILATION_ENVELOPE_SCHEMA_V1);
         assert!(envelope.verify_source(source));
         assert!(envelope.verify_internal_integrity());
-        assert_eq!(*envelope.module_fingerprint(), envelope.module().fingerprint());
+        assert_eq!(
+            *envelope.module_fingerprint(),
+            envelope.module().fingerprint()
+        );
         assert_eq!(
             *envelope.obligation_fingerprint(),
             envelope.module().obligation_fingerprint()
@@ -172,7 +175,10 @@ mod tests {
 
         assert_eq!(first.source_digest(), second.source_digest());
         assert_eq!(first.module_fingerprint(), second.module_fingerprint());
-        assert_eq!(first.obligation_fingerprint(), second.obligation_fingerprint());
+        assert_eq!(
+            first.obligation_fingerprint(),
+            second.obligation_fingerprint()
+        );
         assert_eq!(first.fingerprint(), second.fingerprint());
         assert_ne!(first.source_name(), second.source_name());
     }

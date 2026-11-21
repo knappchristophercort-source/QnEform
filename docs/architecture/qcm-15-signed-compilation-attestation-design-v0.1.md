@@ -18,7 +18,7 @@ QCM-14 remains the canonical unsigned payload. QCM-15 wraps its exact canonical 
 
 ## Proposed initial cryptographic profile
 
-Use Ed25519 for the initial signature profile, subject to selecting and pinning a maintained Rust implementation after reviewing its current security status, supported Rust version, feature flags, and lockfile impact. Do not implement curve or signature arithmetic in QnEform.
+Use `ed25519-dalek` **3.0.0** for the initial signature profile, subject to a successful dependency/CI integration review. Its published crate documentation identifies it as a pure-Rust Ed25519 implementation, with default `fast` and `zeroize` features; version 3.0.0 requires Rust 1.85 and updates its `sha2` dependency to 0.11. QnEform currently uses `sha2` 0.10.9, so Cargo may resolve two SHA-2 major-minor lines; that is an explicit dependency-graph cost to inspect rather than silently assuming compatibility. Keep default `zeroize` enabled, do not enable `hazmat` or `legacy_compatibility`, and do not enable `rand_core` unless production key generation is explicitly brought into scope. Test signing keys can be constructed from fixed test-only seed bytes. Prefer strict verification (`verify_strict`) where supported by the selected API. Pin the exact crate version and commit the resulting lockfile. The crate's Rust 1.85 MSRV means QnEform must either formally adopt that MSRV or select a compatible alternative before integration. Do not implement curve or signature arithmetic in QnEform.
 
 The signature input is a domain-separated, unambiguous byte string:
 

@@ -316,8 +316,7 @@ mod tests {
         let manifest = PortableCompilationAttestation::from_envelope(&envelope).unwrap();
         let mut bytes = manifest.to_canonical_bytes();
         let schema_start = MAGIC.len() + 2 + 2;
-        let schema_length = bytes[MAGIC.len() + 2] as usize * 256
-            + bytes[MAGIC.len() + 3] as usize;
+        let schema_length = bytes[MAGIC.len() + 2] as usize * 256 + bytes[MAGIC.len() + 3] as usize;
         bytes[schema_start..schema_start + schema_length].fill(b'x');
         assert_eq!(
             PortableCompilationAttestation::from_canonical_bytes(&bytes),
